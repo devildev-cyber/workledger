@@ -3,7 +3,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Membership, MembershipRole, Role, User
+from app.models import Membership, MembershipRole, Organization, Role, User
 from app.services.organizations import (
     AlreadyMemberError,
     NoRolesError,
@@ -21,15 +21,21 @@ def make_user(session: Session, email: str) -> User:
     return create_user(session, email=email, full_name=email.split("@")[0], password=PASSWORD)
 
 
+def make_organization(session: Session, name: str = "Harbor") -> Organization:
+    return create_organization(session, name=name, actor=None)
+
+
+def join(session: Session, organization: Organization, user: User, *roles: Role) -> Membership:
+    return add_membership(session, organization=organization, user=user, roles=roles, actor=None)
+
+
 def test_user_can_belong_to_two_organizations_with_different_roles(db_session: Session) -> None:
     contractor = make_user(db_session, "pat@plumbing.example")
-    harbor = create_organization(db_session, name="Harbor Property Management")
-    elm = create_organization(db_session, name="Elm Street Rentals")
+    harbor = make_organization(db_session, "Harbor Property Management")
+    elm = make_organization(db_session, "Elm Street Rentals")
 
-    add_membership(db_session, organization=harbor, user=contractor, roles=[Role.CONTRACTOR])
-    add_membership(
-        db_session, organization=elm, user=contractor, roles=[Role.CONTRACTOR, Role.RESIDENT]
-    )
+    join(db_session, harbor, contractor, Role.CONTRACTOR)
+    join(db_session, elm, contractor, Role.CONTRACTOR, Role.RESIDENT)
 
     memberships = list_memberships_for_user(db_session, contractor.id)
 
@@ -43,10 +49,8 @@ def test_user_can_belong_to_two_organizations_with_different_roles(db_session: S
 
 def test_roles_are_reloaded_from_the_database(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
-    add_membership(
-        db_session, organization=organization, user=user, roles=[Role.ADMINISTRATOR, Role.MANAGER]
-    )
+    organization = make_organization(db_session)
+    join(db_session, organization, user, Role.ADMINISTRATOR, Role.MANAGER)
     db_session.commit()
     db_session.expire_all()
 
@@ -58,24 +62,24 @@ def test_roles_are_reloaded_from_the_database(db_session: Session) -> None:
 
 def test_user_cannot_join_the_same_organization_twice(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
-    add_membership(db_session, organization=organization, user=user, roles=[Role.MANAGER])
+    organization = make_organization(db_session)
+    join(db_session, organization, user, Role.MANAGER)
 
     with pytest.raises(AlreadyMemberError):
-        add_membership(db_session, organization=organization, user=user, roles=[Role.RESIDENT])
+        join(db_session, organization, user, Role.RESIDENT)
 
 
 def test_membership_needs_at_least_one_role(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
+    organization = make_organization(db_session)
 
     with pytest.raises(NoRolesError):
-        add_membership(db_session, organization=organization, user=user, roles=[])
+        join(db_session, organization, user)
 
 
 def test_database_rejects_duplicate_memberships(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
+    organization = make_organization(db_session)
     db_session.add(Membership(organization=organization, user=user))
     db_session.add(Membership(organization=organization, user=user))
 
@@ -85,10 +89,8 @@ def test_database_rejects_duplicate_memberships(db_session: Session) -> None:
 
 def test_database_rejects_unknown_roles(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
-    membership = add_membership(
-        db_session, organization=organization, user=user, roles=[Role.MANAGER]
-    )
+    organization = make_organization(db_session)
+    membership = join(db_session, organization, user, Role.MANAGER)
 
     with pytest.raises(IntegrityError):
         db_session.execute(
@@ -99,10 +101,8 @@ def test_database_rejects_unknown_roles(db_session: Session) -> None:
 
 def test_deleting_a_membership_deletes_its_roles(db_session: Session) -> None:
     user = make_user(db_session, "ana@example.com")
-    organization = create_organization(db_session, name="Harbor")
-    membership = add_membership(
-        db_session, organization=organization, user=user, roles=[Role.MANAGER, Role.RESIDENT]
-    )
+    organization = make_organization(db_session)
+    membership = join(db_session, organization, user, Role.MANAGER, Role.RESIDENT)
 
     db_session.delete(membership)
     db_session.flush()
