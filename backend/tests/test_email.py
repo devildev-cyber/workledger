@@ -61,6 +61,18 @@ def test_file_sender_writes_a_readable_email(tmp_path: Path) -> None:
     assert parsed.get_content().strip() == MESSAGE.body.strip()
 
 
+def test_file_sender_keeps_long_links_readable_in_a_text_editor(tmp_path: Path) -> None:
+    link = "http://localhost:5173/invitations/accept#token=" + "AbC-_123" * 6
+    sender = FileEmailSender(tmp_path, "no-reply@workledger.local")
+
+    sender.send(EmailMessage(to="jos\u00e9@example.com", subject="Hi", body=f"Open {link}\n"))
+
+    [path] = tmp_path.glob("*.eml")
+    text = path.read_text(encoding="utf-8")
+    assert f"Open {link}\n" in text
+    assert "=3D" not in text
+
+
 def test_file_sender_writes_one_file_per_message(tmp_path: Path) -> None:
     sender = FileEmailSender(tmp_path, "no-reply@workledger.local")
 
