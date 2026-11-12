@@ -1,8 +1,11 @@
 import { useState, type SubmitEventHandler } from 'react'
-import { Navigate, useLocation } from 'react-router'
+import { Link, Navigate, useLocation } from 'react-router'
 
 import { ApiError } from '../api/client.ts'
 import { useAuth } from '../auth/auth-context.ts'
+import { AuthCard } from '../components/AuthCard.tsx'
+import { FormError } from '../components/FormError.tsx'
+import { TextField } from '../components/TextField.tsx'
 
 // Only follow paths inside this app, never a full address someone could have planted.
 function safeDestination(value: unknown): string {
@@ -40,48 +43,28 @@ export function SignInPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow"
-      >
-        <h1 className="text-2xl font-semibold text-slate-900">Sign in to WorkLedger</h1>
+    <AuthCard title="Sign in to WorkLedger">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormError message={error} />
 
-        {error && (
-          <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2"
-          />
-        </div>
+        <TextField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={setEmail}
+        />
+        <TextField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={setPassword}
+        />
 
         <button
           type="submit"
@@ -91,6 +74,12 @@ export function SignInPage() {
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-    </main>
+
+      <p className="text-sm">
+        <Link to="/forgot-password" className="text-slate-700 underline">
+          Forgot your password?
+        </Link>
+      </p>
+    </AuthCard>
   )
 }
