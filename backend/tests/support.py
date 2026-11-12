@@ -19,8 +19,8 @@ class SignedInClient:
         self.client = client
         self.headers = {CSRF_HEADER_NAME: csrf_token}
 
-    def get(self, path: str) -> Any:
-        return self.client.get(path)
+    def get(self, path: str, **kwargs: Any) -> Any:
+        return self.client.get(path, **kwargs)
 
     def post(self, path: str, **kwargs: Any) -> Any:
         return self.client.post(path, headers=self.headers, **kwargs)

@@ -74,3 +74,11 @@ export function canSeeDirectory(roles: Role[]): boolean {
 export function isResident(roles: Role[]): boolean {
   return roles.includes('resident')
 }
+
+export function requestsPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/requests`
+}
+
+export function myRequestsPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/my-requests`
+}

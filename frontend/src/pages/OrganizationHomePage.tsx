@@ -1,8 +1,16 @@
 import { useEffect } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 
 import { useCurrentUser } from '../auth/auth-context.ts'
-import { findMembership, rememberOrganization, roleLabel } from '../organizations/organizations.ts'
+import {
+  canSeeDirectory,
+  findMembership,
+  isResident,
+  myRequestsPath,
+  rememberOrganization,
+  requestsPath,
+  roleLabel,
+} from '../organizations/organizations.ts'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function OrganizationHomePage() {
@@ -26,9 +34,21 @@ export function OrganizationHomePage() {
       <p className="text-slate-600">
         Your roles: {membership.roles.map(roleLabel).join(', ')}
       </p>
-      <p className="text-slate-600">
-        Requests and work orders will appear here as they are built.
-      </p>
+      {isResident(membership.roles) && (
+        <p>
+          <Link to={`${myRequestsPath(membership.organization_id)}/new`} className="underline">
+            Report a problem
+          </Link>
+        </p>
+      )}
+      {canSeeDirectory(membership.roles) && (
+        <p>
+          <Link to={requestsPath(membership.organization_id)} className="underline">
+            See reported problems
+          </Link>
+        </p>
+      )}
+      <p className="text-slate-600">Work orders will appear here as they are built.</p>
     </section>
   )
 }

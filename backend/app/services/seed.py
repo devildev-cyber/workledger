@@ -11,8 +11,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utc_now
-from app.models import Organization, Property, Resident, Role, Unit, User
-from app.services import assignments, directory, residents
+from app.models import (
+    Organization,
+    Property,
+    RequestCategory,
+    RequestStatus,
+    Resident,
+    Role,
+    Unit,
+    Urgency,
+    User,
+    Visibility,
+)
+from app.services import assignments, directory, requests, residents
 from app.services.organizations import add_membership, create_organization
 from app.services.users import create_user
 
@@ -122,6 +133,7 @@ class SeedResult:
     properties: int
     units: int
     residents: int
+    requests: int
     password: str
 
 
@@ -212,12 +224,16 @@ def seed_demo_organization(db: Session, *, password: str) -> SeedResult:
         )
 
     _add_history(db, admin, units, people, today)
+    request_count = _add_requests(
+        db, organization, users, units, people, resident_user=users[RESIDENT_EMAIL]
+    )
 
     return SeedResult(
         organization=organization,
         properties=len(created),
         units=len(units),
         residents=len(people),
+        requests=request_count,
         password=password,
     )
 
@@ -248,3 +264,97 @@ def _add_history(
         move_in_date=today + timedelta(days=12),
         actor=admin,
     )
+
+
+# (person index, property, building, unit, category, urgency, title, description, location,
+#  final status, a note shown to the resident, an internal note)
+REQUESTS = [
+    (0, "Maple Court", "Building A", "2B", RequestCategory.PLUMBING, Urgency.SOON,
+     "Kitchen faucet drips", "The cold tap has dripped all week and the sink cabinet is damp.",
+     "Kitchen", RequestStatus.IN_PROGRESS, "A plumber is booked for Thursday morning.",
+     "Washer likely worn. Vendor quote under threshold."),
+    (0, "Maple Court", "Building A", "2B", RequestCategory.ELECTRICAL, Urgency.ROUTINE,
+     "Bedroom light flickers", "The ceiling light flickers when the hallway switch is used.",
+     "Bedroom", RequestStatus.SUBMITTED, None, None),
+    (0, "Maple Court", "Building A", "2B", RequestCategory.HEATING_COOLING, Urgency.URGENT,
+     "Radiator stays cold", "The living room radiator does not heat up at all.",
+     "Living room", RequestStatus.RESOLVED, "The valve was bled and the radiator is working.",
+     "Third call this winter for Building A. Check the boiler."),
+    (1, "Maple Court", "Building A", "1A", RequestCategory.DOORS_WINDOWS, Urgency.ROUTINE,
+     "Front door sticks", "The door needs a shoulder push to open in wet weather.",
+     "Entrance", RequestStatus.IN_REVIEW, None, "Frame may have swollen. Ask maintenance."),
+    (4, "Maple Court", "Building A", "2A", RequestCategory.PESTS, Urgency.URGENT,
+     "Mice in the pantry", "Droppings found twice this week behind the cereal boxes.",
+     "Pantry", RequestStatus.SUBMITTED, None, None),
+    (5, "Riverside Lofts", "", "101", RequestCategory.APPLIANCES, Urgency.URGENT,
+     "Dishwasher leaking", "Water pools on the floor after every cycle.",
+     "Kitchen", RequestStatus.IN_REVIEW, "We are checking the warranty and will confirm a visit.",
+     "Under warranty until March. Do not repair ourselves."),
+    (9, "Riverside Lofts", "", "301", RequestCategory.STRUCTURE, Urgency.SOON,
+     "Brown stain on bedroom ceiling", "A stain appeared and is slowly growing.",
+     "Bedroom", RequestStatus.SUBMITTED, None, None),
+    (10, "Oak Terrace Houses", "", "No. 1", RequestCategory.PLUMBING, Urgency.EMERGENCY,
+     "No hot water", "There has been no hot water since last night.",
+     "Basement", RequestStatus.IN_PROGRESS, "The heater is being replaced today.",
+     "Owner approval needed above threshold."),
+    (12, "Oak Terrace Houses", "", "No. 3", RequestCategory.OTHER, Urgency.ROUTINE,
+     "Smoke detector chirping", "The detector in the hall beeps every minute.",
+     "Hall", RequestStatus.CLOSED, "Battery replaced.", None),
+]  # fmt: skip
+
+
+def _add_requests(
+    db: Session,
+    organization: Organization,
+    users: dict[str, User],
+    units: dict[UnitKey, Unit],
+    people: list[Resident],
+    *,
+    resident_user: User,
+) -> int:
+    """A spread of requests in every status. Only the demo resident submits for themselves;
+    the rest were entered by staff, as after a phone call."""
+    admin = users[ADMIN_EMAIL]
+    manager = users[MANAGER_EMAIL]
+    for (
+        person_index, property_name, building_name, label, category, urgency, title, description,
+        location, final_status, shared_note, internal_note,
+    ) in REQUESTS:  # fmt: skip
+        own = person_index == 0
+        created = requests.create_request(
+            db,
+            organization_id=organization.id,
+            actor=resident_user if own else manager,
+            resident=people[person_index],
+            unit=units[(property_name, building_name, label)],
+            category=category,
+            urgency=urgency,
+            title=title,
+            description=description,
+            location=location,
+            access_notes=None,
+            on_behalf=not own,
+        )
+        steps = [RequestStatus.IN_REVIEW, RequestStatus.IN_PROGRESS, RequestStatus.RESOLVED]
+        if final_status != RequestStatus.SUBMITTED:
+            for step in steps[: steps.index(final_status) + 1] if final_status in steps else steps:
+                requests.post_staff_update(
+                    db, created, actor=manager, body=None, visibility=Visibility.RESIDENT,
+                    new_status=step,
+                )  # fmt: skip
+            if final_status == RequestStatus.CLOSED:
+                requests.post_staff_update(
+                    db, created, actor=admin, body=None, visibility=Visibility.RESIDENT,
+                    new_status=RequestStatus.CLOSED,
+                )  # fmt: skip
+        if shared_note:
+            requests.post_staff_update(
+                db, created, actor=manager, body=shared_note, visibility=Visibility.RESIDENT,
+                new_status=None,
+            )  # fmt: skip
+        if internal_note:
+            requests.post_staff_update(
+                db, created, actor=manager, body=internal_note, visibility=Visibility.INTERNAL,
+                new_status=None,
+            )  # fmt: skip
+    return len(REQUESTS)

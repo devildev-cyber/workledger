@@ -25,6 +25,7 @@ htmlcov/
 
 # Emails written during local development
 outbox/
+uploads/
 
 # Node
 node_modules/

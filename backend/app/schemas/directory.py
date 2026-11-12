@@ -139,6 +139,7 @@ class MyHomeOut(BaseModel):
     """What a resident may see about their own home. Nothing about anyone else."""
 
     tenancy_id: uuid.UUID
+    unit_id: uuid.UUID
     property_name: str
     street: str
     city: str

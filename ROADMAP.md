@@ -29,7 +29,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 0 | Groundwork | A runnable, tested, empty monorepo | — | ✅ |
 | 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ✅ |
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ✅ |
-| 3 | Resident request intake | Residents can report issues and follow their status | 2 | ⬜ |
+| 3 | Resident request intake | Residents can report issues and follow their status | 2 | 🟨 |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ⬜ |
 | 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | ⬜ |
 | 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | ⬜ |
@@ -136,15 +136,13 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Controlled attachment uploads (types, size limits, and who may view them).
 
 **Exit criteria**
-- [ ] A resident can submit, list, and track their own requests on desktop and mobile.
-- [ ] API-level tests confirm that resident responses never include internal notes, private contacts, or restricted attachments.
-- [ ] Invalid or oversized uploads are rejected cleanly.
+- [ ] A resident can submit, list, and track their own requests on desktop and mobile. (Done and tested; the layout is responsive but still needs a check on a real phone.)
+- [x] API-level tests confirm that resident responses never include internal notes, private contacts, or restricted attachments.
+- [x] Invalid or oversized uploads are rejected cleanly.
 
-**Decisions to make**
-- Whether categories and urgency levels are fixed or configurable per organization.
-- How attachments are stored locally and in production.
-- Whether managers can create requests on a resident's behalf (for example, after a phone call).
-- The set of request statuses that residents see.
+**Decisions made**
+- Categories and urgencies are fixed for now, residents see six statuses, managers can enter a request for a resident, and resident-visible and internal records are separated in storage and in the response shapes ([decision 0017](docs/decisions/0017-maintenance-requests.md)).
+- Attachments are limited to JPEG, PNG, WebP, and PDF, stored behind a replaceable interface, and served only through checked API routes ([decision 0018](docs/decisions/0018-attachments.md)).
 
 ---
 

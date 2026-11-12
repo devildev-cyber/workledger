@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.mail import EmailSender
+from app.core.storage import FileStore
 from app.db.session import get_session
 from app.models import UserSession
 from app.services.sessions import get_valid_session
@@ -21,6 +22,13 @@ def get_email_sender(request: Request) -> EmailSender:
 
 
 EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
+
+
+def get_file_store(request: Request) -> FileStore:
+    return request.app.state.file_store
+
+
+FileStoreDep = Annotated[FileStore, Depends(get_file_store)]
 
 
 def _load_session(request: Request, db: Session) -> UserSession | None:

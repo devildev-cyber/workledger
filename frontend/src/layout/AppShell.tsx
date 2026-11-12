@@ -7,8 +7,10 @@ import {
   canSeeDirectory,
   findMembership,
   isResident,
+  myRequestsPath,
   organizationPath,
   propertiesPath,
+  requestsPath,
 } from '../organizations/organizations.ts'
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
 
@@ -39,12 +41,16 @@ export function AppShell() {
           <nav aria-label="Main" className="flex gap-4">
             {canSeeDirectory(membership.roles) && (
               <>
+                <Link to={requestsPath(membership.organization_id)}>Requests</Link>
                 <Link to={propertiesPath(membership.organization_id)}>Properties</Link>
                 <Link to={`${organizationPath(membership.organization_id)}/residents`}>Residents</Link>
               </>
             )}
             {isResident(membership.roles) && (
-              <Link to={`${organizationPath(membership.organization_id)}/my-home`}>My home</Link>
+              <>
+                <Link to={myRequestsPath(membership.organization_id)}>My requests</Link>
+                <Link to={`${organizationPath(membership.organization_id)}/my-home`}>My home</Link>
+              </>
             )}
             {canInvite(membership.roles) && (
               <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>

@@ -105,6 +105,7 @@ export type ManagerChoice = {
 
 export type MyHome = {
   tenancy_id: string
+  unit_id: string
   property_name: string
   street: string
   city: string
@@ -114,4 +115,101 @@ export type MyHome = {
   unit_label: string
   move_in_date: string
   move_out_date: string | null
+}
+
+export type RequestCategory =
+  | 'plumbing'
+  | 'electrical'
+  | 'heating_cooling'
+  | 'appliances'
+  | 'doors_windows'
+  | 'pests'
+  | 'structure'
+  | 'other'
+
+export type Urgency = 'routine' | 'soon' | 'urgent' | 'emergency'
+
+export type RequestStatus =
+  | 'submitted'
+  | 'in_review'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed'
+  | 'cancelled'
+
+export type TimelineKind = 'submitted' | 'status_changed' | 'message' | 'note'
+
+export type RequestSummary = {
+  id: string
+  reference: string
+  status: RequestStatus
+  category: RequestCategory
+  urgency: Urgency
+  title: string
+  property_name: string
+  unit_label: string
+  building_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type Attachment = {
+  id: string
+  filename: string
+  content_type: string
+  size_bytes: number
+  created_at: string
+  // Only staff responses say who can see a file.
+  visibility?: 'resident' | 'internal'
+}
+
+export type TimelineEntry = {
+  id: string
+  kind: TimelineKind
+  body: string | null
+  status: RequestStatus | null
+  created_at: string
+  author: string
+}
+
+export type ResidentRequest = RequestSummary & {
+  description: string
+  location: string | null
+  access_notes: string | null
+  can_cancel: boolean
+  can_message: boolean
+  timeline: TimelineEntry[]
+  attachments: Attachment[]
+}
+
+export type StaffRequestSummary = RequestSummary & {
+  property_id: string
+  resident_name: string
+  submitted_on_behalf: boolean
+}
+
+export type StaffTimelineEntry = {
+  id: string
+  kind: TimelineKind
+  visibility: 'resident' | 'internal'
+  body: string | null
+  status: RequestStatus | null
+  created_at: string
+  author_name: string | null
+}
+
+export type StaffRequest = StaffRequestSummary & {
+  description: string
+  location: string | null
+  access_notes: string | null
+  resident: {
+    id: string
+    full_name: string
+    email: string | null
+    phone: string | null
+    access_instructions: string | null
+    has_account: boolean
+  }
+  timeline: StaffTimelineEntry[]
+  attachments: Attachment[]
 }

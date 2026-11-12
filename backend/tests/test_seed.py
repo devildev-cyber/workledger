@@ -117,3 +117,20 @@ def test_the_command_refuses_to_run_twice(
     assert code == 1
     assert "already exists" in captured.err
     assert "another-one-12345" not in captured.out + captured.err
+
+
+def test_the_demo_has_requests_in_several_statuses(
+    client_factory: ClientFactory, seeded: Organization
+) -> None:
+    base = f"/api/organizations/{seeded.id}"
+
+    admin = sign_in_as(client_factory, ADMIN_EMAIL).get(f"{base}/requests").json()
+    manager = sign_in_as(client_factory, MANAGER_EMAIL).get(f"{base}/requests").json()
+    resident = sign_in_as(client_factory, RESIDENT_EMAIL).get(f"{base}/my-requests").json()
+
+    assert len(admin) == 9
+    assert {item["status"] for item in admin} >= {"submitted", "in_review", "in_progress", "closed"}
+    # The manager looks after two of the three properties, so Oak Terrace is out of reach.
+    assert 0 < len(manager) < len(admin)
+    assert all(item["property_name"] != "Oak Terrace Houses" for item in manager)
+    assert len(resident) == 3

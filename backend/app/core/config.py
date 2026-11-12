@@ -26,10 +26,17 @@ class Settings(BaseSettings):
     email_outbox_dir: Path = Path("./outbox")
     # Where the browser app is served; invitation links point here.
     frontend_url: str = "http://localhost:5173"
+    # Where uploaded files are kept (decision 0018). Back this directory up with the database.
+    upload_dir: Path = Path("./uploads")
+    max_upload_megabytes: int = Field(default=10, gt=0, le=100)
     invitation_valid_days: int = Field(default=7, gt=0)
     password_reset_valid_minutes: int = Field(default=60, gt=0)
     session_max_age_hours: int = Field(default=168, gt=0)
     session_idle_timeout_hours: int = Field(default=12, gt=0)
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_megabytes * 1024 * 1024
 
     @property
     def invitation_ttl(self) -> timedelta:

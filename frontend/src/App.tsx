@@ -7,11 +7,16 @@ import { AcceptInvitationPage } from './pages/AcceptInvitationPage.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
 import { MyHomePage } from './pages/MyHomePage.tsx'
+import { MyRequestPage } from './pages/MyRequestPage.tsx'
+import { MyRequestsPage } from './pages/MyRequestsPage.tsx'
+import { NewRequestPage } from './pages/NewRequestPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { OrganizationHomePage } from './pages/OrganizationHomePage.tsx'
 import { PeoplePage } from './pages/PeoplePage.tsx'
 import { PropertiesPage } from './pages/PropertiesPage.tsx'
 import { PropertyPage } from './pages/PropertyPage.tsx'
+import { RequestPage } from './pages/RequestPage.tsx'
+import { RequestsPage } from './pages/RequestsPage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { ResidentsPage } from './pages/ResidentsPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
@@ -37,6 +42,20 @@ function App() {
             />
             <Route path="organizations/:organizationId/residents" element={<ResidentsPage />} />
             <Route path="organizations/:organizationId/my-home" element={<MyHomePage />} />
+            <Route path="organizations/:organizationId/requests" element={<RequestsPage />} />
+            <Route
+              path="organizations/:organizationId/requests/:requestId"
+              element={<RequestPage />}
+            />
+            <Route path="organizations/:organizationId/my-requests" element={<MyRequestsPage />} />
+            <Route
+              path="organizations/:organizationId/my-requests/new"
+              element={<NewRequestPage />}
+            />
+            <Route
+              path="organizations/:organizationId/my-requests/:requestId"
+              element={<MyRequestPage />}
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

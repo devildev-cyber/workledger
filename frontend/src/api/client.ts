@@ -28,6 +28,9 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 type RequestOptions = {
   method?: string
   body?: unknown
+  // A file sent as the whole request body, with the details that go with it in the address.
+  file?: File
+  query?: Record<string, string>
 }
 
 function messageFromDetail(detail: unknown): string | null {
@@ -64,8 +67,12 @@ export async function api<T = void>(path: string, options: RequestOptions = {}):
   const method = (options.method ?? 'GET').toUpperCase()
   const headers: Record<string, string> = {}
 
-  if (options.body !== undefined) {
+  let body: BodyInit | undefined
+  if (options.file) {
+    body = options.file
+  } else if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
+    body = JSON.stringify(options.body)
   }
   if (!SAFE_METHODS.has(method) && csrfToken) {
     headers[CSRF_HEADER] = csrfToken
@@ -73,11 +80,12 @@ export async function api<T = void>(path: string, options: RequestOptions = {}):
 
   let response: Response
   try {
-    response = await fetch(`/api${path}`, {
+    const query = options.query ? `?${new URLSearchParams(options.query)}` : ''
+    response = await fetch(`/api${path}${query}`, {
       method,
       headers,
       credentials: 'same-origin',
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body,
     })
   } catch {
     throw new ApiError(0, 'Could not reach the server. Check your connection and try again.')

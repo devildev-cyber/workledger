@@ -31,6 +31,9 @@ class EventType(enum.StrEnum):
     RESIDENT_UPDATED = "resident.updated"
     TENANCY_STARTED = "tenancy.started"
     TENANCY_ENDED = "tenancy.ended"
+    REQUEST_SUBMITTED = "request.submitted"
+    REQUEST_STATUS_CHANGED = "request.status_changed"
+    REQUEST_ATTACHMENT_ADDED = "request.attachment_added"
 
 
 class ActivityEventImmutableError(Exception):

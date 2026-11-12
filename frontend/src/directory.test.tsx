@@ -438,6 +438,7 @@ describe('residents page', () => {
 describe('my home', () => {
   const home: MyHome = {
     tenancy_id: 't-1',
+    unit_id: 'u-1',
     property_name: 'Maple Court',
     street: '12 Maple Street',
     city: 'Springfield',

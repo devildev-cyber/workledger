@@ -446,6 +446,7 @@ def read_my_home(context: ResidentContext, db: DbSession) -> list[MyHomeOut]:
     return [
         MyHomeOut(
             tenancy_id=placement.tenancy.id,
+            unit_id=placement.unit.id,
             property_name=placement.property.name,
             street=placement.property.street,
             city=placement.property.city,

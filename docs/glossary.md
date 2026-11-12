@@ -60,7 +60,13 @@ A rentable space within a property, such as an apartment. Maintenance requests a
 A resident's report of a problem, recorded as submitted. A request is not yet a commitment to do work.
 
 **Reference number**
-The human-readable identifier given to a maintenance request so residents and managers can refer to it.
+The human-readable identifier given to a maintenance request so residents and managers can refer to it, such as `REQ-0042`. Numbered per organization.
+
+**Request status**
+Where a request stands, in the words a resident sees: received, in review, in progress, resolved, closed, or withdrawn ([decision 0017](decisions/0017-maintenance-requests.md)).
+
+**Timeline**
+The list of things that happened on a request: when it was submitted, each status change, and each message or note. Every entry is either resident-visible or internal.
 
 **Triage**
 A manager's review of a new request: confirming urgency, checking for duplicates, and deciding whether to create a work order.

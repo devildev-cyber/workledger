@@ -217,6 +217,10 @@ python -m app.bootstrap --organization "Harbor Property Management" \
 
 The command refuses to run if the email already has an account.
 
+Photos and PDFs attached to requests are saved in `backend/uploads/` (change it with `WORKLEDGER_UPLOAD_DIR`). Back that folder up together with the database.
+
+Photos and PDFs attached to requests are saved in `backend/uploads/` (change it with `WORKLEDGER_UPLOAD_DIR`). Back that folder up together with the database.
+
 During development no email is actually sent. Each message the backend would send, such as an invitation or password reset link, is written to `backend/outbox/` as an `.eml` file you can open in any mail client or text editor.
 
 ### 3. Frontend (second terminal)
@@ -243,7 +247,7 @@ To explore a filled-in system, load the synthetic demo organization (a separate 
 python -m app.seed
 ```
 
-It creates "Harbor Demo Properties" with three properties, 24 units, and 18 residents, plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
+It creates "Harbor Demo Properties" with three properties, 24 units, 18 residents, and 9 maintenance requests in different statuses, plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
 
 ## Tests and code quality
 

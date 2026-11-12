@@ -4,7 +4,15 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import EventType, Membership, MembershipRole, Organization, Role, User
+from app.models import (
+    EventType,
+    Membership,
+    MembershipRole,
+    Organization,
+    RequestCounter,
+    Role,
+    User,
+)
 from app.services.activity import record_event
 
 
@@ -20,6 +28,7 @@ def create_organization(session: Session, *, name: str, actor: User | None) -> O
     organization = Organization(name=name.strip())
     session.add(organization)
     session.flush()
+    session.add(RequestCounter(organization_id=organization.id, last_number=0))
 
     record_event(
         session,
