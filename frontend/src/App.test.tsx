@@ -1,9 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCsrfToken, setUnauthorizedHandler } from './api/client.ts'
-import App from './App.tsx'
 import {
   ELM,
   elmManager,
@@ -13,14 +11,7 @@ import {
   notSignedIn,
   sessionFor,
 } from './test/fetch-mock.ts'
-
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
-  )
-}
+import { renderAt } from './test/render.tsx'
 
 function fillAndSubmitSignIn(email = 'ada@example.com', password = 'a long password') {
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: email } })

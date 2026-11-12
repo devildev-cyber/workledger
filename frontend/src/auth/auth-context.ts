@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import type { CurrentUser } from '../api/types.ts'
+import type { CurrentUser, SessionResponse } from '../api/types.ts'
 
 export type AuthState =
   | { status: 'loading' }
@@ -11,6 +11,8 @@ export type AuthContextValue = {
   state: AuthState
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Adopt a session the server just created or changed, or pass null to forget it. */
+  setSession: (session: SessionResponse | null) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

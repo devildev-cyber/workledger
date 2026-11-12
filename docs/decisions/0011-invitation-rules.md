@@ -21,6 +21,6 @@ Accounts are created by invitation only ([0006](0006-invitation-only-accounts.md
 ## Consequences
 
 - Granting more powerful roles (administrator, manager, property owner) always needs an administrator.
-- The emailed link points to the browser app's `/invitations/accept` page, which is built in a later task.
+- The emailed link opens the browser app's `/invitations/accept` page.
 - Email is sent after the invitation is saved. If sending fails, the invitation exists but nobody was notified; re-inviting replaces it.
 - Invitation acceptance reveals nothing about other accounts to people without a valid token.

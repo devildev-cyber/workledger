@@ -312,6 +312,7 @@ def test_preview_describes_the_invitation(
     )
 
     assert response.json() == {
+        "organization_id": str(world.harbor_id),
         "organization_name": "Harbor",
         "email": NEWCOMER,
         "roles": ["contractor"],
