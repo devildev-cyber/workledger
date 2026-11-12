@@ -1,20 +1,14 @@
-import hashlib
-import secrets
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.clock import utc_now
+from app.core.security import hash_token, new_token
 from app.models import User, UserSession
 
-TOKEN_BYTES = 32
 # Avoid a database write on every request just to record activity.
 LAST_SEEN_REFRESH_INTERVAL = timedelta(minutes=1)
-
-
-def hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_session(
@@ -22,11 +16,11 @@ def create_session(
 ) -> tuple[UserSession, str]:
     """Start a session. Returns the record and the raw token, which is never stored."""
     now = now or utc_now()
-    token = secrets.token_urlsafe(TOKEN_BYTES)
+    token = new_token()
     record = UserSession(
         user=user,
         token_hash=hash_token(token),
-        csrf_token=secrets.token_urlsafe(TOKEN_BYTES),
+        csrf_token=new_token(),
         created_at=now,
         last_seen_at=now,
         expires_at=now + max_age,
