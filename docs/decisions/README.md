@@ -25,3 +25,4 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0011](0011-invitation-rules.md) | Invitation rules | Accepted |
 | [0012](0012-password-reset.md) | Password reset | Accepted |
 | [0013](0013-membership-administration.md) | Membership administration | Accepted |
+| [0014](0014-frontend-api-access.md) | How the frontend talks to the API | Accepted |

@@ -2,8 +2,17 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
+// The browser talks only to the Vite server. It forwards /api to the backend, so the
+// session cookie belongs to a single origin and no cross-origin (CORS) setup is needed.
+const apiTarget = process.env.WORKLEDGER_API_URL ?? 'http://localhost:8000'
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': apiTarget,
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

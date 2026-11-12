@@ -1,0 +1,51 @@
+import { useState } from 'react'
+import { Link, Outlet } from 'react-router'
+
+import { useAuth, useCurrentUser } from '../auth/auth-context.ts'
+import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
+
+export function AppShell() {
+  const user = useCurrentUser()
+  const { signOut } = useAuth()
+  const [signOutFailed, setSignOutFailed] = useState(false)
+
+  const handleSignOut = async () => {
+    setSignOutFailed(false)
+    try {
+      await signOut()
+    } catch {
+      setSignOutFailed(true)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-white px-6 py-3">
+        <Link to="/" className="text-lg font-semibold">
+          WorkLedger
+        </Link>
+        <OrganizationSwitcher />
+        <div className="ml-auto flex items-center gap-3 text-sm">
+          <span>{user.full_name}</span>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded border border-slate-300 px-3 py-1"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      {signOutFailed && (
+        <p role="alert" className="bg-red-50 px-6 py-2 text-sm text-red-800">
+          Could not sign out. Check your connection and try again.
+        </p>
+      )}
+
+      <main className="mx-auto max-w-5xl p-6">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

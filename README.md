@@ -229,6 +229,8 @@ npm ci
 npm run dev
 ```
 
+Open `http://localhost:5173` and sign in with the administrator you created in step 2. The backend must be running. The frontend development server forwards every `/api` request to `http://localhost:8000`, so the browser only ever talks to one address. If your backend runs elsewhere, set `WORKLEDGER_API_URL` before `npm run dev`.
+
 ### Local addresses
 
 - Frontend: `http://localhost:5173`
