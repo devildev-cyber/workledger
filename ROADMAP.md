@@ -26,7 +26,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 
 | # | Phase | Outcome | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| 0 | Groundwork | A runnable, tested, empty monorepo | — | ⬜ |
+| 0 | Groundwork | A runnable, tested, empty monorepo | — | ✅ |
 | 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ⬜ |
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ⬜ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | ⬜ |
@@ -58,10 +58,10 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Development instructions for Linux/macOS as well as Windows (the README currently shows PowerShell only).
 
 **Exit criteria**
-- [ ] A fresh clone runs both applications following only the README.
-- [ ] Backend and frontend lint, test, and build commands pass locally and in CI.
-- [ ] No secrets are committed; `.env.example` documents every required variable.
-- [ ] A glossary and a decision log exist and are linked from the README.
+- [x] A fresh clone runs both applications following only the README.
+- [x] Backend and frontend lint, test, and build commands pass locally and in CI.
+- [x] No secrets are committed; `.env.example` documents every required variable.
+- [x] A glossary and a decision log exist and are linked from the README.
 
 **Decisions to make**
 - What exactly the MVP includes and excludes (confirm against this roadmap).
