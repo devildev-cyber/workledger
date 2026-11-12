@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ActivityEvent, EventType, User
@@ -29,3 +30,16 @@ def record_event(
     )
     session.add(activity_event)
     return activity_event
+
+
+def list_events(
+    session: Session, *, organization_id: uuid.UUID, limit: int = 50
+) -> list[ActivityEvent]:
+    """Newest first. Always filtered by organization, so one firm never sees another's history."""
+    statement = (
+        select(ActivityEvent)
+        .where(ActivityEvent.organization_id == organization_id)
+        .order_by(ActivityEvent.occurred_at.desc(), ActivityEvent.id)
+        .limit(limit)
+    )
+    return list(session.scalars(statement))
