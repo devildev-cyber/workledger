@@ -59,9 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(endSession())
   }, [])
 
+  const setSession = useCallback((session: SessionResponse | null) => {
+    setState(session ? startSession(session) : endSession())
+  }, [])
+
   const value = useMemo<AuthContextValue>(
-    () => ({ state, signIn, signOut }),
-    [state, signIn, signOut],
+    () => ({ state, signIn, signOut, setSession }),
+    [state, signIn, signOut, setSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
