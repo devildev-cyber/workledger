@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.mail import EmailSender
 from app.db.session import get_session
 from app.models import UserSession
 from app.services.sessions import get_valid_session
@@ -13,6 +14,13 @@ CSRF_HEADER_NAME = "X-CSRF-Token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 DbSession = Annotated[Session, Depends(get_session)]
+
+
+def get_email_sender(request: Request) -> EmailSender:
+    return request.app.state.email_sender
+
+
+EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
 
 
 def get_authenticated_session(request: Request, db: DbSession) -> UserSession:

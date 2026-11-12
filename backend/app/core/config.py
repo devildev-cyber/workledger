@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     secret_key: SecretStr
     database_url: str = "sqlite:///./workledger.db"
+    # "file" writes .eml files to email_outbox_dir; "memory" is for tests.
+    email_backend: Literal["file", "memory"] = "file"
+    email_from: str = "WorkLedger <no-reply@workledger.local>"
+    email_outbox_dir: Path = Path("./outbox")
     session_max_age_hours: int = Field(default=168, gt=0)
     session_idle_timeout_hours: int = Field(default=12, gt=0)
 

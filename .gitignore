@@ -23,6 +23,9 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
+# Emails written during local development
+outbox/
+
 # Node
 node_modules/
 *.tsbuildinfo

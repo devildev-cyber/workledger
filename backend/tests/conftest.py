@@ -10,6 +10,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.core.mail import MemoryEmailSender
 from app.db.session import create_db_engine, get_session
 
 TEST_SECRET_KEY = "test-secret-key-that-is-long-enough-for-validation"
@@ -18,6 +19,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 # Set before test modules are imported, because importing app.main builds the app.
 os.environ["WORKLEDGER_ENVIRONMENT"] = "test"
 os.environ["WORKLEDGER_SECRET_KEY"] = TEST_SECRET_KEY
+os.environ["WORKLEDGER_EMAIL_BACKEND"] = "memory"
 
 
 @pytest.fixture(autouse=True)
@@ -72,3 +74,11 @@ def client_factory(migrated_engine: Engine) -> Callable[[Settings | None], TestC
 @pytest.fixture
 def client(client_factory: Callable[[Settings | None], TestClient]) -> TestClient:
     return client_factory(None)
+
+
+@pytest.fixture
+def outbox(client: TestClient) -> MemoryEmailSender:
+    """The messages the app under test has sent."""
+    sender = client.app.state.email_sender  # type: ignore[attr-defined]
+    assert isinstance(sender, MemoryEmailSender)
+    return sender
