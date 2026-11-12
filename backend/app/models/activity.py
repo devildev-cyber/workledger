@@ -14,6 +14,8 @@ from app.db.types import UTCDateTime
 class EventType(enum.StrEnum):
     ORGANIZATION_CREATED = "organization.created"
     MEMBERSHIP_CREATED = "membership.created"
+    MEMBERSHIP_ROLES_CHANGED = "membership.roles_changed"
+    MEMBERSHIP_REMOVED = "membership.removed"
     INVITATION_CREATED = "invitation.created"
     INVITATION_REVOKED = "invitation.revoked"
     INVITATION_ACCEPTED = "invitation.accepted"
