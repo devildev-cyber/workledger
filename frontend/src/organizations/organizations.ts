@@ -1,0 +1,44 @@
+import type { CurrentUser, Membership, Role } from '../api/types.ts'
+
+const LAST_ORGANIZATION_KEY = 'workledger.lastOrganizationId'
+
+const ROLE_LABELS: Record<Role, string> = {
+  administrator: 'Administrator',
+  manager: 'Manager',
+  resident: 'Resident',
+  contractor: 'Contractor',
+  property_owner: 'Property owner',
+}
+
+export function roleLabel(role: Role): string {
+  return ROLE_LABELS[role] ?? role
+}
+
+export function organizationPath(organizationId: string): string {
+  return `/organizations/${organizationId}`
+}
+
+export function findMembership(user: CurrentUser, organizationId: string | undefined) {
+  return user.memberships.find((membership) => membership.organization_id === organizationId)
+}
+
+export function rememberOrganization(organizationId: string): void {
+  try {
+    localStorage.setItem(LAST_ORGANIZATION_KEY, organizationId)
+  } catch {
+    // Storage can be blocked; the person simply lands on their first organization next time.
+  }
+}
+
+function recalledOrganization(): string | null {
+  try {
+    return localStorage.getItem(LAST_ORGANIZATION_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** The organization to open first: the one used last time if still a member, else the first. */
+export function startingMembership(user: CurrentUser): Membership | undefined {
+  return findMembership(user, recalledOrganization() ?? undefined) ?? user.memberships[0]
+}
