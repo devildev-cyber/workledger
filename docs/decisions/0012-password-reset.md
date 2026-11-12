@@ -21,7 +21,7 @@ People forget passwords. Accounts are created by invitation ([0006](0006-invitat
 ## Consequences
 
 - Whoever controls the mailbox controls the account. This is the same trust placed in invitations.
-- The emailed link points to the browser app's `/password-reset` page, which is built in a later task.
+- The emailed link opens the browser app's `/password-reset` page.
 - Email is sent after the change is saved. If sending fails, the reset still happened; the notice is lost.
 - Repeated requests are not rate limited yet. That is listed with brute-force protection in Phase 10.
 - Expired tokens stay in the table until a cleanup job exists, together with expired sessions.
