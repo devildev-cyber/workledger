@@ -4,7 +4,8 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Membership, MembershipRole, Organization, Role, User
+from app.models import EventType, Membership, MembershipRole, Organization, Role, User
+from app.services.activity import record_event
 
 
 class AlreadyMemberError(Exception):
@@ -15,10 +16,20 @@ class NoRolesError(Exception):
     pass
 
 
-def create_organization(session: Session, *, name: str) -> Organization:
+def create_organization(session: Session, *, name: str, actor: User | None) -> Organization:
     organization = Organization(name=name.strip())
     session.add(organization)
     session.flush()
+
+    record_event(
+        session,
+        event_type=EventType.ORGANIZATION_CREATED,
+        organization_id=organization.id,
+        actor=actor,
+        subject_type="organization",
+        subject_id=organization.id,
+        after={"name": organization.name},
+    )
     return organization
 
 
@@ -44,7 +55,12 @@ def list_memberships_for_user(session: Session, user_id: uuid.UUID) -> list[Memb
 
 
 def add_membership(
-    session: Session, *, organization: Organization, user: User, roles: Iterable[Role]
+    session: Session,
+    *,
+    organization: Organization,
+    user: User,
+    roles: Iterable[Role],
+    actor: User | None,
 ) -> Membership:
     role_set = set(roles)
     if not role_set:
@@ -59,4 +75,14 @@ def add_membership(
     )
     session.add(membership)
     session.flush()
+
+    record_event(
+        session,
+        event_type=EventType.MEMBERSHIP_CREATED,
+        organization_id=organization.id,
+        actor=actor,
+        subject_type="membership",
+        subject_id=membership.id,
+        after={"user_id": str(user.id), "roles": sorted(role_set)},
+    )
     return membership
