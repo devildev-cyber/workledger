@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.db.session import create_db_engine, get_session
-from app.main import create_app
 
 TEST_SECRET_KEY = "test-secret-key-that-is-long-enough-for-validation"
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -54,6 +53,10 @@ def client_factory(migrated_engine: Engine) -> Callable[[Settings | None], TestC
     """Build API clients wired to the disposable migrated database."""
 
     def build(settings: Settings | None = None) -> TestClient:
+        # Imported here because importing app.main builds the app, which needs the
+        # test environment variables set at the top of this file.
+        from app.main import create_app
+
         app = create_app(settings)
 
         def use_test_database() -> Iterator[Session]:
