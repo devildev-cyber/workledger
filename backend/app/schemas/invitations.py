@@ -35,6 +35,7 @@ class InvitationTokenRequest(BaseModel):
 
 
 class InvitationPreviewOut(BaseModel):
+    organization_id: uuid.UUID
     organization_name: str
     email: str
     roles: list[Role]

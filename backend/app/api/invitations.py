@@ -156,6 +156,7 @@ def preview_invitation(body: InvitationTokenRequest, db: DbSession) -> Invitatio
     if invitation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, INVALID_INVITATION)
     return InvitationPreviewOut(
+        organization_id=invitation.organization_id,
         organization_name=invitation.organization.name,
         email=invitation.email,
         roles=sorted(invitation.roles),
