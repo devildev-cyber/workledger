@@ -17,6 +17,7 @@ class EventType(enum.StrEnum):
     INVITATION_CREATED = "invitation.created"
     INVITATION_REVOKED = "invitation.revoked"
     INVITATION_ACCEPTED = "invitation.accepted"
+    PASSWORD_RESET = "user.password_reset"
 
 
 class ActivityEventImmutableError(Exception):
