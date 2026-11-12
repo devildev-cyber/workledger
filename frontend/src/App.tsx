@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { OrganizationHomePage } from './pages/OrganizationHomePage.tsx'
+import { PeoplePage } from './pages/PeoplePage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
 
@@ -24,6 +25,7 @@ function App() {
           <Route element={<AppShell />}>
             <Route index element={<HomeRedirect />} />
             <Route path="organizations/:organizationId" element={<OrganizationHomePage />} />
+            <Route path="organizations/:organizationId/people" element={<PeoplePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
