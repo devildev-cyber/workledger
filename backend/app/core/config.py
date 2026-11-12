@@ -24,8 +24,15 @@ class Settings(BaseSettings):
     email_backend: Literal["file", "memory"] = "file"
     email_from: str = "WorkLedger <no-reply@workledger.local>"
     email_outbox_dir: Path = Path("./outbox")
+    # Where the browser app is served; invitation links point here.
+    frontend_url: str = "http://localhost:5173"
+    invitation_valid_days: int = Field(default=7, gt=0)
     session_max_age_hours: int = Field(default=168, gt=0)
     session_idle_timeout_hours: int = Field(default=12, gt=0)
+
+    @property
+    def invitation_ttl(self) -> timedelta:
+        return timedelta(days=self.invitation_valid_days)
 
     @property
     def session_max_age(self) -> timedelta:

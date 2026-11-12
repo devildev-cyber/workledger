@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy.orm import Session
 
 from app.api.deps import SESSION_COOKIE_NAME, AuthenticatedSession, DbSession
 from app.core.config import Settings
@@ -22,7 +23,16 @@ def _cookie_options(settings: Settings) -> dict[str, Any]:
     }
 
 
-def _session_out(db: DbSession, record: UserSession) -> SessionOut:
+def set_session_cookie(response: Response, settings: Settings, token: str) -> None:
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        token,
+        max_age=int(settings.session_max_age.total_seconds()),
+        **_cookie_options(settings),
+    )
+
+
+def session_out(db: Session, record: UserSession) -> SessionOut:
     user = record.user
     memberships = list_memberships_for_user(db, user.id)
     return SessionOut(
@@ -54,18 +64,13 @@ def sign_in(body: SignInRequest, request: Request, response: Response, db: DbSes
     record, token = create_session(db, user, max_age=settings.session_max_age)
     db.commit()
 
-    response.set_cookie(
-        SESSION_COOKIE_NAME,
-        token,
-        max_age=int(settings.session_max_age.total_seconds()),
-        **_cookie_options(settings),
-    )
-    return _session_out(db, record)
+    set_session_cookie(response, settings, token)
+    return session_out(db, record)
 
 
 @router.get("/me")
 def read_current_user(record: AuthenticatedSession, db: DbSession) -> SessionOut:
-    return _session_out(db, record)
+    return session_out(db, record)
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT)
@@ -75,5 +80,4 @@ def sign_out(
     end_session(db, record)
     db.commit()
 
-    options = _cookie_options(request.app.state.settings)
-    response.delete_cookie(SESSION_COOKIE_NAME, **options)
+    response.delete_cookie(SESSION_COOKIE_NAME, **_cookie_options(request.app.state.settings))

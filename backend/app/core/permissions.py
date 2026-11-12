@@ -2,6 +2,21 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from app.models import Role
+
+# Which roles each role may invite (decision 0011). Roles not listed cannot invite.
+INVITABLE_ROLES: dict[Role, frozenset[Role]] = {
+    Role.ADMINISTRATOR: frozenset(Role),
+    Role.MANAGER: frozenset({Role.RESIDENT, Role.CONTRACTOR}),
+}
+
+
+def invitable_roles(held_roles: Iterable[Role]) -> frozenset[Role]:
+    allowed: set[Role] = set()
+    for role in held_roles:
+        allowed |= INVITABLE_ROLES.get(role, frozenset())
+    return frozenset(allowed)
+
 
 @dataclass(frozen=True)
 class PropertyScope:

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import auth, health, organizations
+from app.api import auth, health, invitations, organizations
 from app.core.config import Settings, get_settings
 from app.core.mail import EmailSender, build_email_sender
 
@@ -16,6 +16,8 @@ def create_app(
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(organizations.router, prefix="/api")
+    app.include_router(invitations.organization_router, prefix="/api")
+    app.include_router(invitations.public_router, prefix="/api")
     return app
 
 

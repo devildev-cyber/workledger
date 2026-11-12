@@ -22,3 +22,4 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0008](0008-property-scoped-managers.md) | Managers act only on properties assigned to them | Accepted |
 | [0009](0009-session-authentication.md) | Server-side sessions with a cookie and a CSRF header | Accepted |
 | [0010](0010-organization-scoped-access.md) | Organization in the URL, roles declared per endpoint | Accepted |
+| [0011](0011-invitation-rules.md) | Invitation rules | Accepted |

@@ -1,4 +1,5 @@
 from app.models.activity import ActivityEvent, ActivityEventImmutableError, EventType
+from app.models.invitation import Invitation
 from app.models.membership import Membership, MembershipRole, Role
 from app.models.organization import Organization
 from app.models.session import UserSession
@@ -8,6 +9,7 @@ __all__ = [
     "ActivityEvent",
     "ActivityEventImmutableError",
     "EventType",
+    "Invitation",
     "Membership",
     "MembershipRole",
     "Organization",
