@@ -10,6 +10,19 @@ class SignInRequest(BaseModel):
     password: str = Field(max_length=256)
 
 
+class PasswordResetRequest(BaseModel):
+    email: str = Field(max_length=320)
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    password: str = Field(max_length=256)
+
+
+class MessageOut(BaseModel):
+    detail: str
+
+
 class MembershipOut(BaseModel):
     organization_id: uuid.UUID
     organization_name: str

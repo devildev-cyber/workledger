@@ -27,12 +27,17 @@ class Settings(BaseSettings):
     # Where the browser app is served; invitation links point here.
     frontend_url: str = "http://localhost:5173"
     invitation_valid_days: int = Field(default=7, gt=0)
+    password_reset_valid_minutes: int = Field(default=60, gt=0)
     session_max_age_hours: int = Field(default=168, gt=0)
     session_idle_timeout_hours: int = Field(default=12, gt=0)
 
     @property
     def invitation_ttl(self) -> timedelta:
         return timedelta(days=self.invitation_valid_days)
+
+    @property
+    def password_reset_ttl(self) -> timedelta:
+        return timedelta(minutes=self.password_reset_valid_minutes)
 
     @property
     def session_max_age(self) -> timedelta:
