@@ -1,5 +1,10 @@
+from datetime import datetime
+
 from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from app.core.clock import utc_now
+from app.db.types import UTCDateTime
 
 # Stable constraint names keep migrations reproducible across SQLite and PostgreSQL.
 NAMING_CONVENTION = {
@@ -13,3 +18,8 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utc_now, onupdate=utc_now)
