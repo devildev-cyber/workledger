@@ -1,8 +1,9 @@
+from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -19,6 +20,16 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
     secret_key: SecretStr
     database_url: str = "sqlite:///./workledger.db"
+    session_max_age_hours: int = Field(default=168, gt=0)
+    session_idle_timeout_hours: int = Field(default=12, gt=0)
+
+    @property
+    def session_max_age(self) -> timedelta:
+        return timedelta(hours=self.session_max_age_hours)
+
+    @property
+    def session_idle_timeout(self) -> timedelta:
+        return timedelta(hours=self.session_idle_timeout_hours)
 
     @field_validator("secret_key")
     @classmethod
