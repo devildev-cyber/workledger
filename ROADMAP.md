@@ -28,7 +28,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | --- | --- | --- | --- | --- |
 | 0 | Groundwork | A runnable, tested, empty monorepo | — | ✅ |
 | 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ✅ |
-| 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ⬜ |
+| 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ✅ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | ⬜ |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ⬜ |
 | 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | ⬜ |
@@ -113,15 +113,14 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Synthetic seed data representing a small, realistic firm.
 
 **Exit criteria**
-- [ ] An administrator can set up properties, units, and residents through the UI.
-- [ ] Residents can see only the units they are associated with.
-- [ ] Private contact details are visible only to roles that need them.
-- [ ] The seed command produces a usable demo organization with no real personal data.
+- [x] An administrator can set up properties, units, and residents through the UI.
+- [x] Residents can see only the units they are associated with.
+- [x] Private contact details are visible only to roles that need them.
+- [x] The seed command produces a usable demo organization with no real personal data.
 
-**Decisions to make**
-- Whether **Building** is a real entity (the README mentions buildings; the domain model does not).
-- How move-ins and move-outs work: does a past resident keep access to old requests?
-- Whether a unit can have several residents, and whether a resident can be linked to several units.
+**Decisions made**
+- Buildings are a real, optional record; properties, units, and manager assignment follow [decision 0015](docs/decisions/0015-property-directory.md).
+- Residents and tenancies are separate records, a unit can have several residents and a resident several units, and a past resident loses the unit but keeps their own request history ([decision 0016](docs/decisions/0016-residents-and-tenancies.md)).
 
 ---
 

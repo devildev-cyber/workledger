@@ -16,6 +16,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     testTimeout: 15000,
+    // Role queries are CPU heavy. Fewer workers than cores kept timing out tests from
+    // starving each other, and it is also faster overall.
+    maxWorkers: 2,
     setupFiles: ['./src/test/setup.ts'],
   },
 })

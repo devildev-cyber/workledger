@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import EventType, Membership, MembershipRole, Organization, Role, User
 from app.services.activity import record_event
+from app.services.assignments import clear_assignments
 from app.services.organizations import NoRolesError
 
 
@@ -76,6 +77,9 @@ def change_roles(
 
     if Role.ADMINISTRATOR in current_roles and Role.ADMINISTRATOR not in new_roles:
         _refuse_if_last_administrator(session, membership)
+    if Role.MANAGER in current_roles and Role.MANAGER not in new_roles:
+        # Access to properties ends with the role, not later.
+        clear_assignments(session, membership.id)
 
     # Only the differences are written, so roles that stay are not deleted and re-inserted.
     for assignment in list(membership.role_assignments):
@@ -106,6 +110,7 @@ def remove_member(session: Session, membership: Membership, *, actor: User) -> N
     if Role.ADMINISTRATOR in roles:
         _refuse_if_last_administrator(session, membership)
 
+    clear_assignments(session, membership.id)
     membership_id, organization_id, user_id = (
         membership.id,
         membership.organization_id,

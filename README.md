@@ -237,7 +237,13 @@ Open `http://localhost:5173` and sign in with the administrator you created in s
 - API health check: `http://localhost:8000/api/health`
 - API reference: `http://localhost:8000/docs`
 
-Synthetic seed data for demonstrations arrives with the property and unit directory ([Phase 2](ROADMAP.md#phase-2--property-and-unit-directory)).
+To explore a filled-in system, load the synthetic demo organization (a separate command, for a fresh database):
+
+```bash
+python -m app.seed
+```
+
+It creates "Harbor Demo Properties" with three properties, 24 units, and 18 residents, plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
 
 ## Tests and code quality
 

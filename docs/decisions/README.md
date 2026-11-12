@@ -26,3 +26,5 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0012](0012-password-reset.md) | Password reset | Accepted |
 | [0013](0013-membership-administration.md) | Membership administration | Accepted |
 | [0014](0014-frontend-api-access.md) | How the frontend talks to the API | Accepted |
+| [0015](0015-property-directory.md) | Property directory | Accepted |
+| [0016](0016-residents-and-tenancies.md) | Residents, move-ins, and private contact details | Accepted |

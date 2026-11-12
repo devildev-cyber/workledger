@@ -48,3 +48,70 @@ export type Invitation = {
   created_at: string
   expires_at: string
 }
+
+export type Building = { id: string; name: string }
+
+export type Property = {
+  id: string
+  name: string
+  street: string
+  city: string
+  region: string
+  postal_code: string
+  currency: string
+  approval_threshold_cents: number | null
+  unit_count: number
+  buildings: Building[]
+}
+
+export type ResidentRef = { id: string; full_name: string }
+
+export type Unit = {
+  id: string
+  property_id: string
+  building_id: string | null
+  label: string
+  current_residents: ResidentRef[]
+}
+
+export type Tenancy = {
+  id: string
+  unit_id: string
+  unit_label: string
+  building_name: string | null
+  property_id: string
+  property_name: string
+  move_in_date: string
+  move_out_date: string | null
+  is_current: boolean
+}
+
+export type Resident = {
+  id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  access_instructions: string | null
+  has_account: boolean
+  tenancies: Tenancy[]
+}
+
+export type ManagerChoice = {
+  membership_id: string
+  full_name: string
+  email: string
+  assigned: boolean
+}
+
+export type MyHome = {
+  tenancy_id: string
+  property_name: string
+  street: string
+  city: string
+  region: string
+  postal_code: string
+  building_name: string | null
+  unit_label: string
+  move_in_date: string
+  move_out_date: string | null
+}

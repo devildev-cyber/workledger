@@ -29,7 +29,10 @@ A member who manages the organization's properties, units, memberships, and acce
 A property manager or coordinator who triages requests, creates and dispatches work orders, and verifies completed work. Acts only on properties assigned to them ([decision 0008](decisions/0008-property-scoped-managers.md)).
 
 **Resident**
-A person living in a unit who reports problems and follows their own requests.
+A person living in a unit who reports problems and follows their own requests. The directory record may exist before the person has an account, and is linked to them by email ([decision 0016](decisions/0016-residents-and-tenancies.md)).
+
+**Tenancy**
+The period a resident lives in a unit: a move-in date and an optional move-out date. A resident can have several, and a unit can have several current ones.
 
 **Contractor**
 An independent tradesperson or company assigned to carry out work orders. Sees only assigned jobs. A contractor serving several organizations has one account with a membership in each.
@@ -46,7 +49,7 @@ The person or entity that owns a property and approves spending above its approv
 A managed real estate asset, such as an apartment complex or a house, belonging to one organization.
 
 **Building**
-A structure within a property. **Open:** whether this is a separate record ([Phase 2](../ROADMAP.md#phase-2--property-and-unit-directory)).
+A structure within a property. An optional record: a property with no buildings holds its units directly ([decision 0015](decisions/0015-property-directory.md)).
 
 **Unit**
 A rentable space within a property, such as an apartment. Maintenance requests are reported against a unit.

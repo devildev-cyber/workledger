@@ -10,6 +10,7 @@ from app.core.security import hash_token, new_token
 from app.models import EventType, Invitation, Membership, Organization, Role, User
 from app.services.activity import record_event
 from app.services.organizations import AlreadyMemberError, NoRolesError, add_membership
+from app.services.residents import link_residents_for_member
 from app.services.users import get_user_by_email, normalize_email
 
 
@@ -164,6 +165,9 @@ def accept_invitation(
     membership = add_membership(
         db, organization=invitation.organization, user=user, roles=invitation.roles, actor=user
     )
+    if Role.RESIDENT in invitation.roles:
+        # Directory records created for this person before they joined now belong to them.
+        link_residents_for_member(db, organization_id=invitation.organization_id, user=user)
     record_event(
         db,
         event_type=EventType.INVITATION_ACCEPTED,

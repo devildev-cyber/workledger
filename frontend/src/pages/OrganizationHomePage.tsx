@@ -27,7 +27,7 @@ export function OrganizationHomePage() {
         Your roles: {membership.roles.map(roleLabel).join(', ')}
       </p>
       <p className="text-slate-600">
-        Properties, requests, and work orders will appear here as they are built.
+        Requests and work orders will appear here as they are built.
       </p>
     </section>
   )

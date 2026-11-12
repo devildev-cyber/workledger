@@ -62,3 +62,15 @@ export function canManageMembers(roles: Role[]): boolean {
 export function canInvite(roles: Role[]): boolean {
   return roles.includes('administrator') || roles.includes('manager')
 }
+
+export function propertiesPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/properties`
+}
+
+export function canSeeDirectory(roles: Role[]): boolean {
+  return roles.includes('administrator') || roles.includes('manager')
+}
+
+export function isResident(roles: Role[]): boolean {
+  return roles.includes('resident')
+}

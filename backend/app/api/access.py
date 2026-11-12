@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, status
 from app.api.deps import AuthenticatedSession, DbSession
 from app.core.permissions import PropertyScope
 from app.models import Membership, Organization, Role, User
+from app.services.assignments import assigned_property_ids
 from app.services.organizations import get_membership
 
 
@@ -18,18 +19,20 @@ class OrganizationContext:
     user: User
     organization: Organization
     membership: Membership
+    property_scope: PropertyScope
 
     @property
     def roles(self) -> frozenset[Role]:
         return self.membership.roles
 
-    @property
-    def property_scope(self) -> PropertyScope:
-        if Role.ADMINISTRATOR in self.roles:
-            return PropertyScope.everything()
-        # Phase 2 loads the properties assigned to this member here. Until then,
-        # everyone except administrators gets no property access.
-        return PropertyScope.limited_to(())
+
+def _property_scope(db: DbSession, membership: Membership) -> PropertyScope:
+    """Administrators act on every property; managers only on the ones assigned to them."""
+    if Role.ADMINISTRATOR in membership.roles:
+        return PropertyScope.everything()
+    if Role.MANAGER in membership.roles:
+        return PropertyScope.limited_to(assigned_property_ids(db, membership.id))
+    return PropertyScope.limited_to(())
 
 
 def get_organization_context(
@@ -44,7 +47,10 @@ def get_organization_context(
     if membership is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Organization not found")
     return OrganizationContext(
-        user=session.user, organization=membership.organization, membership=membership
+        user=session.user,
+        organization=membership.organization,
+        membership=membership,
+        property_scope=_property_scope(db, membership),
     )
 
 

@@ -6,13 +6,16 @@ type Result<T> = { path: string; version: number; data: T | null; error: string 
 
 /**
  * Loads data from the API and lets the caller load it again after a change. While
- * reloading, the previous data stays available so lists do not flash empty.
+ * reloading, the previous data stays available so lists do not flash empty. A null path
+ * means there is nothing to load yet.
  */
-export function useApiData<T>(path: string) {
+export function useApiData<T>(path: string | null) {
   const [version, setVersion] = useState(0)
   const [result, setResult] = useState<Result<T> | null>(null)
 
   useEffect(() => {
+    if (path === null) return
+
     let cancelled = false
 
     api<T>(path)
@@ -33,12 +36,12 @@ export function useApiData<T>(path: string) {
   const reload = useCallback(() => setVersion((current) => current + 1), [])
 
   // Ignore a result that belongs to a previous path, such as another organization.
-  const current = result?.path === path ? result : null
+  const current = path !== null && result?.path === path ? result : null
 
   return {
     data: current?.data ?? null,
     error: current?.error ?? null,
-    loading: current === null,
+    loading: path !== null && current === null,
     reload,
   }
 }

@@ -20,6 +20,17 @@ class EventType(enum.StrEnum):
     INVITATION_REVOKED = "invitation.revoked"
     INVITATION_ACCEPTED = "invitation.accepted"
     PASSWORD_RESET = "user.password_reset"
+    PROPERTY_CREATED = "property.created"
+    PROPERTY_UPDATED = "property.updated"
+    PROPERTY_MANAGERS_CHANGED = "property.managers_changed"
+    BUILDING_CREATED = "building.created"
+    BUILDING_UPDATED = "building.updated"
+    UNIT_CREATED = "unit.created"
+    UNIT_UPDATED = "unit.updated"
+    RESIDENT_CREATED = "resident.created"
+    RESIDENT_UPDATED = "resident.updated"
+    TENANCY_STARTED = "tenancy.started"
+    TENANCY_ENDED = "tenancy.ended"
 
 
 class ActivityEventImmutableError(Exception):

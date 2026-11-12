@@ -4,8 +4,11 @@ import { Link, Outlet, useParams } from 'react-router'
 import { useAuth, useCurrentUser } from '../auth/auth-context.ts'
 import {
   canInvite,
+  canSeeDirectory,
   findMembership,
+  isResident,
   organizationPath,
+  propertiesPath,
 } from '../organizations/organizations.ts'
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
 
@@ -32,9 +35,20 @@ export function AppShell() {
           WorkLedger
         </Link>
         <OrganizationSwitcher />
-        {membership && canInvite(membership.roles) && (
-          <nav aria-label="Main">
-            <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>
+        {membership && (
+          <nav aria-label="Main" className="flex gap-4">
+            {canSeeDirectory(membership.roles) && (
+              <>
+                <Link to={propertiesPath(membership.organization_id)}>Properties</Link>
+                <Link to={`${organizationPath(membership.organization_id)}/residents`}>Residents</Link>
+              </>
+            )}
+            {isResident(membership.roles) && (
+              <Link to={`${organizationPath(membership.organization_id)}/my-home`}>My home</Link>
+            )}
+            {canInvite(membership.roles) && (
+              <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>
+            )}
           </nav>
         )}
         <div className="ml-auto flex items-center gap-3 text-sm">

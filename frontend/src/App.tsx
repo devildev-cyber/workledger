@@ -6,10 +6,14 @@ import { AppShell } from './layout/AppShell.tsx'
 import { AcceptInvitationPage } from './pages/AcceptInvitationPage.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
+import { MyHomePage } from './pages/MyHomePage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { OrganizationHomePage } from './pages/OrganizationHomePage.tsx'
 import { PeoplePage } from './pages/PeoplePage.tsx'
+import { PropertiesPage } from './pages/PropertiesPage.tsx'
+import { PropertyPage } from './pages/PropertyPage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
+import { ResidentsPage } from './pages/ResidentsPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
 
 // The router itself is supplied by main.tsx, so tests can start at any address.
@@ -26,6 +30,13 @@ function App() {
             <Route index element={<HomeRedirect />} />
             <Route path="organizations/:organizationId" element={<OrganizationHomePage />} />
             <Route path="organizations/:organizationId/people" element={<PeoplePage />} />
+            <Route path="organizations/:organizationId/properties" element={<PropertiesPage />} />
+            <Route
+              path="organizations/:organizationId/properties/:propertyId"
+              element={<PropertyPage />}
+            />
+            <Route path="organizations/:organizationId/residents" element={<ResidentsPage />} />
+            <Route path="organizations/:organizationId/my-home" element={<MyHomePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
