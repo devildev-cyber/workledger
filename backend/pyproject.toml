@@ -9,6 +9,7 @@ description = "WorkLedger API service"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115",
+  "pydantic-settings>=2.4",
   "uvicorn[standard]>=0.30",
 ]
 
