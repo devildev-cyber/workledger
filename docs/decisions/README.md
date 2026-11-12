@@ -20,3 +20,4 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0006](0006-invitation-only-accounts.md) | Accounts are created by invitation only | Accepted |
 | [0007](0007-email-interface.md) | Send email through a replaceable interface | Accepted |
 | [0008](0008-property-scoped-managers.md) | Managers act only on properties assigned to them | Accepted |
+| [0009](0009-session-authentication.md) | Server-side sessions with a cookie and a CSRF header | Accepted |
