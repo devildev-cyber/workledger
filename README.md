@@ -208,6 +208,15 @@ uvicorn app.main:app --reload
 
 `alembic upgrade head` creates or updates the local SQLite database, `backend/workledger.db`. Run it again whenever new migrations arrive.
 
+Accounts are created by invitation only, so a new installation needs its first organization and administrator. Create them once, from `backend/` with the virtual environment active. The password is requested at a hidden prompt:
+
+```bash
+python -m app.bootstrap --organization "Harbor Property Management" \
+  --email admin@example.com --name "Alex Rivera"
+```
+
+The command refuses to run if the email already has an account.
+
 ### 3. Frontend (second terminal)
 
 The commands are the same on every platform:
