@@ -156,6 +156,12 @@ The central records are **Organization**, **Property**, **Unit**, **Membership**
 
 A maintenance request records the resident's report. A work order records the operational response. Linking, rather than conflating, these records makes it possible to triage repeat reports, capture the reason for work, and retain an accurate timeline.
 
+## Project documentation
+
+- [Roadmap](ROADMAP.md): delivery phases, exit criteria, and open questions
+- [Glossary](docs/glossary.md): shared product vocabulary
+- [Decision log](docs/decisions/README.md): significant decisions and their reasons
+
 ## Local development
 
 **Requirements:** Python 3.11+, Node.js 20+, and Git. Local development uses SQLite and does not require Docker, hosted infrastructure, or paid credentials.
