@@ -51,15 +51,23 @@ def db_session(migrated_engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client_factory(migrated_engine: Engine) -> Callable[[Settings | None], TestClient]:
-    """Build API clients wired to the disposable migrated database."""
+def outbox() -> MemoryEmailSender:
+    """Every email sent by any client built in this test."""
+    return MemoryEmailSender()
+
+
+@pytest.fixture
+def client_factory(
+    migrated_engine: Engine, outbox: MemoryEmailSender
+) -> Callable[[Settings | None], TestClient]:
+    """Build API clients wired to the disposable migrated database and the shared outbox."""
 
     def build(settings: Settings | None = None) -> TestClient:
         # Imported here because importing app.main builds the app, which needs the
         # test environment variables set at the top of this file.
         from app.main import create_app
 
-        app = create_app(settings)
+        app = create_app(settings, email_sender=outbox)
 
         def use_test_database() -> Iterator[Session]:
             with Session(migrated_engine) as session:
@@ -74,11 +82,3 @@ def client_factory(migrated_engine: Engine) -> Callable[[Settings | None], TestC
 @pytest.fixture
 def client(client_factory: Callable[[Settings | None], TestClient]) -> TestClient:
     return client_factory(None)
-
-
-@pytest.fixture
-def outbox(client: TestClient) -> MemoryEmailSender:
-    """The messages the app under test has sent."""
-    sender = client.app.state.email_sender  # type: ignore[attr-defined]
-    assert isinstance(sender, MemoryEmailSender)
-    return sender
