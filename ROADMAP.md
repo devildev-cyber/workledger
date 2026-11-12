@@ -27,7 +27,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | # | Phase | Outcome | Depends on | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Groundwork | A runnable, tested, empty monorepo | — | ✅ |
-| 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | 🟨 |
+| 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ✅ |
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ⬜ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | ⬜ |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ⬜ |
@@ -85,16 +85,18 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Basic membership administration: invite, change role, and remove members.
 
 **Exit criteria**
-- [ ] Automated tests prove that users cannot read or change another organization's data, including by guessing IDs or URLs.
-- [ ] Each role is tested for both allowed and denied actions.
-- [ ] Membership and role changes produce activity events.
-- [ ] Session cookies are HTTP-only; passwords are never stored or logged in plain text.
+- [x] Automated tests prove that users cannot read or change another organization's data, including by guessing IDs or URLs.
+- [x] Each role is tested for both allowed and denied actions.
+- [x] Membership and role changes produce activity events.
+- [x] Session cookies are HTTP-only; passwords are never stored or logged in plain text.
 
 **Decisions made**
 - One account can hold memberships in several organizations ([decision 0005](docs/decisions/0005-accounts-and-memberships.md)).
 - Accounts are created by invitation only ([decision 0006](docs/decisions/0006-invitation-only-accounts.md)).
 - Email goes through a replaceable interface, and password reset is included now ([decision 0007](docs/decisions/0007-email-interface.md)).
 - Managers act only on properties assigned to them ([decision 0008](docs/decisions/0008-property-scoped-managers.md)).
+- Sessions use a cookie and a CSRF header ([decision 0009](docs/decisions/0009-session-authentication.md)); the organization is in the URL and roles are declared per endpoint ([decision 0010](docs/decisions/0010-organization-scoped-access.md)).
+- Invitation, password reset, and membership rules are in decisions [0011](docs/decisions/0011-invitation-rules.md), [0012](docs/decisions/0012-password-reset.md), and [0013](docs/decisions/0013-membership-administration.md). The frontend follows [0014](docs/decisions/0014-frontend-api-access.md).
 
 ---
 

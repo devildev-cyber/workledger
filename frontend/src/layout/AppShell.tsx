@@ -1,12 +1,19 @@
 import { useState } from 'react'
-import { Link, Outlet } from 'react-router'
+import { Link, Outlet, useParams } from 'react-router'
 
 import { useAuth, useCurrentUser } from '../auth/auth-context.ts'
+import {
+  canInvite,
+  findMembership,
+  organizationPath,
+} from '../organizations/organizations.ts'
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
 
 export function AppShell() {
   const user = useCurrentUser()
   const { signOut } = useAuth()
+  const { organizationId } = useParams()
+  const membership = findMembership(user, organizationId)
   const [signOutFailed, setSignOutFailed] = useState(false)
 
   const handleSignOut = async () => {
@@ -25,6 +32,11 @@ export function AppShell() {
           WorkLedger
         </Link>
         <OrganizationSwitcher />
+        {membership && canInvite(membership.roles) && (
+          <nav aria-label="Main">
+            <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>
+          </nav>
+        )}
         <div className="ml-auto flex items-center gap-3 text-sm">
           <span>{user.full_name}</span>
           <button
