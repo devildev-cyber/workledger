@@ -117,7 +117,7 @@ WorkLedger treats data separation and workflow correctness as product requiremen
 | Data access | SQLAlchemy 2.x, Alembic |
 | Persistence | SQLite for local development and tests; PostgreSQL for production deployment |
 | Authentication | Secure, server-managed sessions with role-based authorization |
-| Backend quality | Pytest, HTTPX, Ruff |
+| Backend quality | Pytest, httpx2, Ruff |
 | Frontend quality | Vitest, React Testing Library, ESLint |
 | API documentation | OpenAPI via FastAPI |
 
@@ -166,42 +166,79 @@ A maintenance request records the resident's report. A work order records the op
 
 **Requirements:** Python 3.11+, Node.js 20+, and Git. Local development uses SQLite and does not require Docker, hosted infrastructure, or paid credentials.
 
-**Backend (PowerShell):**
+### 1. Configure the environment (once)
+
+From the repository root, copy the example settings and generate a secret key:
+
+```bash
+# Linux and macOS
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
 ```powershell
+# Windows (PowerShell)
+Copy-Item .env.example .env
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Paste the printed value after `WORKLEDGER_SECRET_KEY=` in `.env`. The backend refuses to start without it. Every setting is documented in [`.env.example`](.env.example). Never commit `.env`, secrets, or real customer data.
+
+### 2. Backend
+
+```bash
+# Linux and macOS
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+```powershell
+# Windows (PowerShell)
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-Copy-Item ..\.env.example ..\.env
 alembic upgrade head
-python -m app.seed
 uvicorn app.main:app --reload
 ```
 
-**Frontend (second terminal):**
+`alembic upgrade head` creates or updates the local SQLite database, `backend/workledger.db`. Run it again whenever new migrations arrive.
 
-```powershell
+### 3. Frontend (second terminal)
+
+The commands are the same on every platform:
+
+```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`  
-API reference: `http://localhost:8000/docs`
+### Local addresses
 
-A local `.env` file defines the application secret and development database URL. Never commit secrets or production customer data. The seed command uses synthetic properties, users, units, and requests.
+- Frontend: `http://localhost:5173`
+- API health check: `http://localhost:8000/api/health`
+- API reference: `http://localhost:8000/docs`
+
+Synthetic seed data for demonstrations arrives with the property and unit directory ([Phase 2](ROADMAP.md#phase-2--property-and-unit-directory)).
 
 ## Tests and code quality
 
-```powershell
-# From backend/
-pytest -q
+These are the same checks that CI runs on every pull request:
+
+```bash
+# From backend/, with the virtual environment active
 ruff check .
+ruff format --check .
+pytest -q
 
 # From frontend/
 npm run lint
-npm run test
+npm test
 npm run build
 ```
 
