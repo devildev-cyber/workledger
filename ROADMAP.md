@@ -27,7 +27,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | # | Phase | Outcome | Depends on | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Groundwork | A runnable, tested, empty monorepo | — | ✅ |
-| 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ⬜ |
+| 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | 🟨 |
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ⬜ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | ⬜ |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ⬜ |
@@ -63,10 +63,10 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - [x] No secrets are committed; `.env.example` documents every required variable.
 - [x] A glossary and a decision log exist and are linked from the README.
 
-**Decisions to make**
-- What exactly the MVP includes and excludes (confirm against this roadmap).
-- The CI platform.
-- Glossary terms, especially the two meanings of "owner" (see *Known gaps*).
+**Decisions made**
+- The MVP is Milestone B, Phases 0–9 ([decision 0004](docs/decisions/0004-mvp-scope.md)).
+- CI runs on GitHub Actions.
+- "Firm principal" and "property owner" replace the ambiguous "owner" ([glossary](docs/glossary.md)).
 
 ---
 
@@ -76,12 +76,13 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 
 **Scope**
 - User accounts, password hashing, and server-managed sessions (sign in and sign out).
-- Organizations, memberships, and roles: administrator, manager, resident, contractor, owner.
-- Property-level scoping where a role is limited to certain properties.
-- A single, consistent permission-checking approach used by all endpoints.
+- Organizations, memberships, and roles: administrator, manager, resident, contractor, property owner.
+- A single, consistent permission-checking approach used by all endpoints, able to limit a role to certain properties. Assigning managers to properties happens in Phase 2, once properties exist.
 - The activity-event foundation: actor, event type, timestamp, and before/after context.
 - Safe error responses that do not reveal whether another organization's records exist.
-- Basic membership administration, enough to set up test organizations.
+- An email interface that records messages locally and in tests instead of sending them.
+- Invitations, password reset, and a command-line tool to create the first organization and administrator.
+- Basic membership administration: invite, change role, and remove members.
 
 **Exit criteria**
 - [ ] Automated tests prove that users cannot read or change another organization's data, including by guessing IDs or URLs.
@@ -89,11 +90,11 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - [ ] Membership and role changes produce activity events.
 - [ ] Session cookies are HTTP-only; passwords are never stored or logged in plain text.
 
-**Decisions to make**
-- Whether a contractor or owner can belong to **more than one organization** (independent contractors often serve several firms).
-- How accounts are created: invitation, self-registration, or created by an administrator.
-- Whether password reset is needed now. It depends on email, which affects when the notification interface is introduced.
-- Whether managers see all of an organization's properties or only the ones assigned to them.
+**Decisions made**
+- One account can hold memberships in several organizations ([decision 0005](docs/decisions/0005-accounts-and-memberships.md)).
+- Accounts are created by invitation only ([decision 0006](docs/decisions/0006-invitation-only-accounts.md)).
+- Email goes through a replaceable interface, and password reset is included now ([decision 0007](docs/decisions/0007-email-interface.md)).
+- Managers act only on properties assigned to them ([decision 0008](docs/decisions/0008-property-scoped-managers.md)).
 
 ---
 
@@ -104,6 +105,7 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 **Scope**
 - Properties and units under an organization (and buildings, if confirmed as an entity).
 - Residents associated with units, with contact details and access instructions.
+- Assigning managers to the properties they act on.
 - Property-level settings that later phases rely on, such as approval threshold and currency, defined but not yet enforced.
 - Administration screens for properties, units, residents, and membership.
 - Synthetic seed data representing a small, realistic firm.
@@ -342,19 +344,19 @@ These are not separate phases. Each phase must account for them before it is mar
 
 These came up while reviewing the product documents. Each is assigned to the phase where it must be resolved.
 
-| Gap | Resolve in |
-| --- | --- |
-| "Owner" means both the firm's owner (the buyer) and a property owner (an approver). These need distinct terms. | 0 |
-| The project description lists "maintenance staff" as daily users, but no such role appears in the README. | 1, 5 |
-| Independent contractors may work for several firms, which complicates strict organization isolation. | 1 |
-| Buildings appear in the README's capabilities but not in the domain model. | 2 |
-| Request and work-order statuses and transitions are not defined. | 3, 4 |
-| The relationship between requests and work orders (one-to-one or many-to-one) is not defined. | 4 |
-| It is unclear whether approvals come from owners, managers, or both, and how revised estimates are handled. | 7 |
-| Notification channels are unspecified, yet password reset and invitations may need email earlier. | 1, 8 |
-| Reporting metrics and export formats are named but not defined. | 9 |
-| Development instructions cover only Windows PowerShell. | 0 |
-| The README's layout references `docs/` and `.env.example`, which do not exist yet. | 0 |
+| Gap | Resolve in | Status |
+| --- | --- | --- |
+| "Owner" means both the firm's owner (the buyer) and a property owner (an approver). These need distinct terms. | 0 | ✅ [Glossary](docs/glossary.md) |
+| The project description lists "maintenance staff" as daily users, but no such role appears in the README. | 5 | ⬜ |
+| Independent contractors may work for several firms, which complicates strict organization isolation. | 1 | ✅ [0005](docs/decisions/0005-accounts-and-memberships.md) |
+| Buildings appear in the README's capabilities but not in the domain model. | 2 | ⬜ |
+| Request and work-order statuses and transitions are not defined. | 3, 4 | ⬜ |
+| The relationship between requests and work orders (one-to-one or many-to-one) is not defined. | 4 | ⬜ |
+| It is unclear whether approvals come from owners, managers, or both, and how revised estimates are handled. | 7 | ⬜ |
+| Notification channels are unspecified, yet password reset and invitations may need email earlier. | 1, 8 | 🟨 Email interface in [0007](docs/decisions/0007-email-interface.md); channels in Phase 8 |
+| Reporting metrics and export formats are named but not defined. | 9 | ⬜ |
+| Development instructions cover only Windows PowerShell. | 0 | ✅ README |
+| The README's layout references `docs/` and `.env.example`, which do not exist yet. | 0 | ✅ |
 
 ---
 

@@ -10,8 +10,14 @@ A property management firm using WorkLedger. Every property, user membership, an
 **Firm principal**
 The owner or operations lead of a management firm, typically the person who buys WorkLedger. Not a product role; use this term only when discussing customers. Do not call them an "owner", which is reserved for property owners.
 
+**User account**
+A person's single login. An account belongs to the person, not to an organization ([decision 0005](decisions/0005-accounts-and-memberships.md)).
+
 **Membership**
-The link between a user and an organization, carrying that user's role. A user acts within an organization only through a membership.
+The link between a user account and one organization, carrying that user's roles there. A user can have memberships in several organizations but always acts within one at a time.
+
+**Invitation**
+A single-use, expiring offer to join an organization with given roles, sent by email. The only way to gain a membership ([decision 0006](decisions/0006-invitation-only-accounts.md)).
 
 **Role**
 What a member is allowed to do: administrator, manager, resident, contractor, or property owner.
@@ -20,13 +26,13 @@ What a member is allowed to do: administrator, manager, resident, contractor, or
 A member who manages the organization's properties, units, memberships, and access settings.
 
 **Manager**
-A property manager or coordinator who triages requests, creates and dispatches work orders, and verifies completed work.
+A property manager or coordinator who triages requests, creates and dispatches work orders, and verifies completed work. Acts only on properties assigned to them ([decision 0008](decisions/0008-property-scoped-managers.md)).
 
 **Resident**
 A person living in a unit who reports problems and follows their own requests.
 
 **Contractor**
-An independent tradesperson or company assigned to carry out work orders. Sees only assigned jobs. **Open:** whether one contractor can serve several organizations ([Phase 1](../ROADMAP.md#phase-1--identity-organizations-and-access)).
+An independent tradesperson or company assigned to carry out work orders. Sees only assigned jobs. A contractor serving several organizations has one account with a membership in each.
 
 **Maintenance staff**
 In-house repair workers employed by the firm. **Open:** whether this is a separate role or the same as contractor ([Phase 5](../ROADMAP.md#phase-5--dispatch-and-contractor-workspace)).

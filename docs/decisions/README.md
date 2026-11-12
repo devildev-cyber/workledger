@@ -15,3 +15,8 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0001](0001-record-decisions.md) | Record significant decisions in this log | Accepted |
 | [0002](0002-pull-request-workflow.md) | Change `main` only through squash-merged pull requests | Accepted |
 | [0003](0003-eslint-with-typescript-6.md) | Use ESLint with TypeScript 6.0 on the frontend | Accepted |
+| [0004](0004-mvp-scope.md) | The MVP is Milestone B | Accepted |
+| [0005](0005-accounts-and-memberships.md) | One account, many organization memberships | Accepted |
+| [0006](0006-invitation-only-accounts.md) | Accounts are created by invitation only | Accepted |
+| [0007](0007-email-interface.md) | Send email through a replaceable interface | Accepted |
+| [0008](0008-property-scoped-managers.md) | Managers act only on properties assigned to them | Accepted |
