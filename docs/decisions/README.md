@@ -24,3 +24,4 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0010](0010-organization-scoped-access.md) | Organization in the URL, roles declared per endpoint | Accepted |
 | [0011](0011-invitation-rules.md) | Invitation rules | Accepted |
 | [0012](0012-password-reset.md) | Password reset | Accepted |
+| [0013](0013-membership-administration.md) | Membership administration | Accepted |
