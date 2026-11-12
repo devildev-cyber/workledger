@@ -9,6 +9,7 @@ description = "WorkLedger API service"
 requires-python = ">=3.11"
 dependencies = [
   "alembic>=1.13",
+  "argon2-cffi>=23.1",
   "fastapi>=0.115",
   "pydantic-settings>=2.4",
   "sqlalchemy>=2.0",
