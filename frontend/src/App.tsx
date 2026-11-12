@@ -3,9 +3,12 @@ import { Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { RequireAuth } from './auth/RequireAuth.tsx'
 import { AppShell } from './layout/AppShell.tsx'
+import { AcceptInvitationPage } from './pages/AcceptInvitationPage.tsx'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { OrganizationHomePage } from './pages/OrganizationHomePage.tsx'
+import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
 
 // The router itself is supplied by main.tsx, so tests can start at any address.
@@ -14,6 +17,9 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/sign-in" element={<SignInPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/password-reset" element={<ResetPasswordPage />} />
+        <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<HomeRedirect />} />
