@@ -217,6 +217,8 @@ python -m app.bootstrap --organization "Harbor Property Management" \
 
 The command refuses to run if the email already has an account.
 
+During development no email is actually sent. Each message the backend would send, such as an invitation or password reset link, is written to `backend/outbox/` as an `.eml` file you can open in any mail client or text editor.
+
 ### 3. Frontend (second terminal)
 
 The commands are the same on every platform:
