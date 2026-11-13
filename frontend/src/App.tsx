@@ -6,7 +6,9 @@ import { AppShell } from './layout/AppShell.tsx'
 import { AcceptInvitationPage } from './pages/AcceptInvitationPage.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
+import { JobPage } from './pages/JobPage.tsx'
 import { MyHomePage } from './pages/MyHomePage.tsx'
+import { MyJobsPage } from './pages/MyJobsPage.tsx'
 import { MyRequestPage } from './pages/MyRequestPage.tsx'
 import { MyRequestsPage } from './pages/MyRequestsPage.tsx'
 import { NewRequestPage } from './pages/NewRequestPage.tsx'
@@ -54,6 +56,8 @@ function App() {
               path="organizations/:organizationId/work-orders/:workOrderId"
               element={<WorkOrderPage />}
             />
+            <Route path="organizations/:organizationId/my-jobs" element={<MyJobsPage />} />
+            <Route path="organizations/:organizationId/my-jobs/:workOrderId" element={<JobPage />} />
             <Route path="organizations/:organizationId/my-requests" element={<MyRequestsPage />} />
             <Route
               path="organizations/:organizationId/my-requests/new"

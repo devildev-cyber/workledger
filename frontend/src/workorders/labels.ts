@@ -19,6 +19,12 @@ export const ENTRY_HEADLINES: Record<Exclude<EntryKind, 'status_changed'>, strin
   edited: 'Details changed',
   note: 'Note',
   request_linked: 'Request linked',
+  assigned: 'Contractor assigned',
+  unassigned: 'Contractor removed',
+  assignment_accepted: 'Job accepted',
+  assignment_declined: 'Job declined',
+  progress: 'Progress update',
+  clarification: 'Question for the property team',
 }
 
 export const FIELD_LABELS: Record<string, string> = {

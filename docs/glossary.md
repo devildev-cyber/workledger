@@ -81,10 +81,16 @@ The statuses a work order moves through, from open to closed or cancelled, and t
 The durable record of the operational response to a request: scope, priority, assignment, estimates, approvals, work performed, costs, and history.
 
 **Dispatch**
-Assigning a work order to a contractor.
+Assigning a work order to a contractor. A work order has one current contractor, who accepts the job or declines it with a reason ([decision 0020](decisions/0020-dispatch-and-contractor-access.md)).
 
 **Assignment**
 The record that a specific contractor is responsible for a work order during a period of time. Reassignment creates a new assignment and keeps the old one in history.
+
+**Job**
+A work order as a contractor sees it: only the details needed to do the work, and only while it is assigned to them.
+
+**Ready for review**
+The status a contractor sets when the work is done, with a note describing what was done. The manager decides whether it is complete.
 
 **Estimate**
 A contractor's expected cost for a work order, recorded as an exact amount with a currency.

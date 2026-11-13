@@ -3,8 +3,10 @@ from fastapi import FastAPI
 from app.api import (
     auth,
     directory,
+    dispatch,
     health,
     invitations,
+    jobs,
     members,
     organizations,
     password_reset,
@@ -34,6 +36,8 @@ def create_app(
     app.include_router(directory.router, prefix="/api")
     app.include_router(requests.router, prefix="/api")
     app.include_router(work_orders.router, prefix="/api")
+    app.include_router(dispatch.router, prefix="/api")
+    app.include_router(jobs.router, prefix="/api")
     app.include_router(members.router, prefix="/api")
     app.include_router(invitations.organization_router, prefix="/api")
     app.include_router(invitations.public_router, prefix="/api")

@@ -5,7 +5,9 @@ import { useCurrentUser } from '../auth/auth-context.ts'
 import {
   canSeeDirectory,
   findMembership,
+  isContractor,
   isResident,
+  myJobsPath,
   myRequestsPath,
   rememberOrganization,
   requestsPath,
@@ -38,6 +40,13 @@ export function OrganizationHomePage() {
         <p>
           <Link to={`${myRequestsPath(membership.organization_id)}/new`} className="underline">
             Report a problem
+          </Link>
+        </p>
+      )}
+      {isContractor(membership.roles) && (
+        <p>
+          <Link to={myJobsPath(membership.organization_id)} className="underline">
+            See my jobs
           </Link>
         </p>
       )}

@@ -8,6 +8,7 @@ import { TextAreaField } from '../components/TextAreaField.tsx'
 export function NoteForm({ url, onSaved }: { url: string; onSaved: () => void }) {
   const [body, setBody] = useState('')
   const [visibility, setVisibility] = useState<'internal' | 'resident'>('internal')
+  const [shareWithContractor, setShareWithContractor] = useState(false)
   const { busy, error, run, fail } = useAction()
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
@@ -16,9 +17,15 @@ export function NoteForm({ url, onSaved }: { url: string; onSaved: () => void })
       fail('Write the note first.')
       return
     }
-    const saved = await run(() => api(url, { method: 'POST', body: { body, visibility } }))
+    const saved = await run(() =>
+      api(url, {
+        method: 'POST',
+        body: { body, visibility, share_with_contractor: shareWithContractor },
+      }),
+    )
     if (saved) {
       setBody('')
+      setShareWithContractor(false)
       onSaved()
     }
   }
@@ -59,6 +66,14 @@ export function NoteForm({ url, onSaved }: { url: string; onSaved: () => void })
           Share with the residents of linked requests
         </label>
       </fieldset>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={shareWithContractor}
+          onChange={(event) => setShareWithContractor(event.target.checked)}
+        />
+        Also share with the assigned contractor
+      </label>
       <button
         type="submit"
         disabled={busy}

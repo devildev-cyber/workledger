@@ -31,7 +31,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ✅ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | 🟨 |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ✅ |
-| 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | ⬜ |
+| 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | 🟨 |
 | 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | ⬜ |
 | ★ | **Milestone A: core repair loop** | One repair flows from report to closure | 0–6 | ⬜ |
 | 7 | Estimates and owner approvals | Spending above a threshold requires a recorded decision | 6 | ⬜ |
@@ -165,10 +165,10 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 
 **Decisions made**
 - Several duplicate requests can share one work order, and one request produces at most one ([decision 0019](docs/decisions/0019-work-orders-and-triage.md)).
-- The lifecycle has nine statuses and an explicit transition table, with `assigned` and `awaiting approval` reserved for Phases 5 and 7. Only an administrator can reopen a closed or cancelled work order ([decision 0019](docs/decisions/0019-work-orders-and-triage.md)).
+- The lifecycle has nine statuses and an explicit transition table, with `assigned` set by dispatch in Phase 5 and `awaiting approval` reserved for Phase 7. Only an administrator can reopen a closed or cancelled work order ([decision 0019](docs/decisions/0019-work-orders-and-triage.md)).
 
 **Deferred**
-- The assignee filter, until assignment exists in Phase 5.
+- Nothing. The assignee filter arrived with Phase 5.
 
 ---
 
@@ -185,15 +185,14 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - A layout usable on a phone in the field.
 
 **Exit criteria**
-- [ ] Contractors cannot access unassigned jobs or internal records, including by direct ID.
-- [ ] Reassignment keeps the full history and attribution.
-- [ ] The main contractor tasks work on a mobile screen.
+- [x] Contractors cannot access unassigned jobs or internal records, including by direct ID.
+- [x] Reassignment keeps the full history and attribution.
+- [ ] The main contractor tasks work on a mobile screen. The layout is mobile first with large tap targets, but it still needs a check on a real phone.
 
-**Decisions to make**
-- Whether internal maintenance staff are a separate role or the same as contractors.
-- Whether contractors can accept or decline an assignment.
-- Whether a work order can have more than one assignee at a time.
-- Exactly which resident details a contractor may see (for example, a contact path versus a phone number).
+**Decisions made**
+- Internal staff and outside tradespeople share the contractor role, and a work order has one current contractor ([decision 0020](docs/decisions/0020-dispatch-and-contractor-access.md)).
+- A contractor accepts a job or declines it with a reason, before starting ([decision 0020](docs/decisions/0020-dispatch-and-contractor-access.md)).
+- A contractor sees the address and scope, then the resident's first name and entry instructions after accepting. Never a phone number, email, or full name. Questions go through the property team ([decision 0020](docs/decisions/0020-dispatch-and-contractor-access.md)).
 
 ---
 

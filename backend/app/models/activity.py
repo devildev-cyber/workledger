@@ -40,6 +40,10 @@ class EventType(enum.StrEnum):
     WORK_ORDER_CREATED = "work_order.created"
     WORK_ORDER_UPDATED = "work_order.updated"
     WORK_ORDER_STATUS_CHANGED = "work_order.status_changed"
+    WORK_ORDER_ASSIGNED = "work_order.assigned"
+    WORK_ORDER_UNASSIGNED = "work_order.unassigned"
+    WORK_ORDER_ASSIGNMENT_RESPONDED = "work_order.assignment_responded"
+    WORK_ORDER_ATTACHMENT_ADDED = "work_order.attachment_added"
 
 
 class ActivityEventImmutableError(Exception):

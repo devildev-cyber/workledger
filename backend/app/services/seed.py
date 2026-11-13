@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import utc_now
 from app.models import (
+    EntryKind,
     Organization,
     Property,
     RequestCategory,
@@ -24,7 +25,7 @@ from app.models import (
     Visibility,
     WorkOrderStatus,
 )
-from app.services import assignments, directory, requests, residents, work_orders
+from app.services import assignments, directory, dispatch, requests, residents, work_orders
 from app.services.organizations import add_membership, create_organization
 from app.services.users import create_user
 
@@ -316,14 +317,25 @@ class WorkOrderPlan:
 
     path: list[WorkOrderStatus]
     due_in_days: int
+    # Whether the demo contractor was given the job, and whether they have accepted it yet.
+    contractor: str | None = None
+    # A note the manager shared with the contractor, and an update the contractor wrote.
+    instruction: str | None = None
+    progress: str | None = None
 
 
 _DONE = [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.READY_FOR_REVIEW, WorkOrderStatus.COMPLETED]
 WORK_ORDER_PLANS = {
-    0: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS], 5),  # faucet
-    2: WorkOrderPlan(_DONE, -3),  # radiator, finished
+    0: WorkOrderPlan(  # faucet
+        [WorkOrderStatus.IN_PROGRESS],
+        5,
+        contractor="accepted",
+        instruction="The resident works from home. Ring the bell and wait.",
+        progress="New cartridge ordered. I will fit it on Thursday morning.",
+    ),
+    2: WorkOrderPlan(_DONE, -3, contractor="accepted"),  # radiator, finished
     5: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD], 14),  # dishwasher
-    7: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS], -2),  # no hot water, overdue
+    7: WorkOrderPlan([], -2, contractor="pending"),  # no hot water, overdue, awaiting a reply
     8: WorkOrderPlan([*_DONE, WorkOrderStatus.CLOSED], -20),  # smoke detector
 }
 
@@ -395,11 +407,40 @@ def _add_requests(
             priority=urgency,
             due_date=today + timedelta(days=plan.due_in_days),
         )
+        job = None
+        if plan.contractor:
+            demo_contractor = next(
+                item
+                for item in dispatch.contractors(db, organization.id)
+                if item.user.id == users[CONTRACTOR_EMAIL].id
+            )
+            dispatch.assign(db, work_order, actor=manager, contractor=demo_contractor)
+            job = dispatch.get_job(
+                db,
+                organization_id=organization.id,
+                membership_id=demo_contractor.membership.id,
+                work_order_id=work_order.id,
+            )
+            if plan.contractor == "accepted":
+                dispatch.accept(db, job, actor=users[CONTRACTOR_EMAIL])
         for step in plan.path:
             work_orders.change_status(
                 db, work_order, actor=admin if step == WorkOrderStatus.CLOSED else manager,
                 new_status=step, note=None, is_administrator=True,
             )  # fmt: skip
+        if plan.instruction:
+            work_orders.add_note(
+                db,
+                work_order,
+                actor=manager,
+                body=plan.instruction,
+                visibility=Visibility.INTERNAL,
+                share_with_contractor=True,
+            )
+        if plan.progress and job is not None:
+            dispatch.add_entry(
+                db, job, actor=users[CONTRACTOR_EMAIL], kind=EntryKind.PROGRESS, body=plan.progress
+            )
         if internal_note:
             work_orders.add_note(
                 db, work_order, actor=manager, body=internal_note, visibility=Visibility.INTERNAL

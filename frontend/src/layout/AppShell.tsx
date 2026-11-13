@@ -6,7 +6,9 @@ import {
   canInvite,
   canSeeDirectory,
   findMembership,
+  isContractor,
   isResident,
+  myJobsPath,
   myRequestsPath,
   organizationPath,
   propertiesPath,
@@ -53,6 +55,9 @@ export function AppShell() {
                 <Link to={myRequestsPath(membership.organization_id)}>My requests</Link>
                 <Link to={`${organizationPath(membership.organization_id)}/my-home`}>My home</Link>
               </>
+            )}
+            {isContractor(membership.roles) && (
+              <Link to={myJobsPath(membership.organization_id)}>My jobs</Link>
             )}
             {canInvite(membership.roles) && (
               <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>

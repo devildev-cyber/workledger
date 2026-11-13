@@ -75,6 +75,14 @@ export function isResident(roles: Role[]): boolean {
   return roles.includes('resident')
 }
 
+export function isContractor(roles: Role[]): boolean {
+  return roles.includes('contractor')
+}
+
+export function myJobsPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/my-jobs`
+}
+
 export function requestsPath(organizationId: string): string {
   return `${organizationPath(organizationId)}/requests`
 }

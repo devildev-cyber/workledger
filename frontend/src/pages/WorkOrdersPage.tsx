@@ -2,7 +2,7 @@ import { useState, type SubmitEventHandler } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 
 import { api } from '../api/client.ts'
-import type { Property, Urgency, WorkOrder, WorkOrderStatus, WorkOrderSummary } from '../api/types.ts'
+import type { Contractor, Property, Urgency, WorkOrder, WorkOrderStatus, WorkOrderSummary } from '../api/types.ts'
 import { useApiData } from '../api/useApiData.ts'
 import { useCurrentUser } from '../auth/auth-context.ts'
 import { FormError } from '../components/FormError.tsx'
@@ -36,6 +36,8 @@ type Filters = {
   propertyId: string
   search: string
   olderThan: string
+  // A contractor's membership ID, or 'none' for work orders with no contractor.
+  contractor: string
 }
 
 const NO_FILTERS: Filters = {
@@ -45,6 +47,7 @@ const NO_FILTERS: Filters = {
   propertyId: '',
   search: '',
   olderThan: '',
+  contractor: '',
 }
 
 function queryFor(filters: Filters): string {
@@ -55,6 +58,8 @@ function queryFor(filters: Filters): string {
   if (filters.propertyId) params.set('property_id', filters.propertyId)
   if (filters.search.trim()) params.set('q', filters.search.trim())
   if (filters.olderThan) params.set('older_than_days', filters.olderThan)
+  if (filters.contractor === 'none') params.set('unassigned', 'true')
+  else if (filters.contractor) params.set('assignee_id', filters.contractor)
   const text = params.toString()
   return text ? `?${text}` : ''
 }
@@ -69,6 +74,7 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
     `${base}${queryFor(filters)}`,
   )
   const { data: properties } = useApiData<Property[]>(`/organizations/${organizationId}/properties`)
+  const { data: contractors } = useApiData<Contractor[]>(`/organizations/${organizationId}/contractors`)
 
   const change = (changes: Partial<Filters>) => setFilters((current) => ({ ...current, ...changes }))
 
@@ -78,7 +84,7 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
   }
 
   const filtered = filters.search !== '' || filters.status !== '' || filters.priority !== ''
-    || filters.propertyId !== '' || filters.olderThan !== ''
+    || filters.propertyId !== '' || filters.olderThan !== '' || filters.contractor !== ''
 
   return (
     <div className="space-y-6">
@@ -158,6 +164,17 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
           options={AGE_CHOICES}
           onChange={(value) => change({ olderThan: value })}
         />
+        <SelectField
+          id="work-order-contractor-filter"
+          label="Contractor"
+          placeholder="Anyone"
+          value={filters.contractor}
+          options={[
+            { value: 'none', label: 'Not assigned' },
+            ...(contractors ?? []).map((item) => ({ value: item.id, label: item.full_name })),
+          ]}
+          onChange={(value) => change({ contractor: value })}
+        />
         <form onSubmit={handleSearch} role="search" className="flex items-end gap-2 sm:col-span-2">
           <div className="flex-1">
             <TextField
@@ -197,6 +214,7 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
                 <th className="px-3 py-2">Property</th>
                 <th className="px-3 py-2">Priority</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Contractor</th>
                 <th className="px-3 py-2">Due</th>
                 <th className="px-3 py-2">Requests</th>
               </tr>
@@ -220,6 +238,12 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
                   <td className="px-3 py-2">{URGENCY_SHORT[workOrder.priority]}</td>
                   <td className="px-3 py-2">
                     <WorkOrderStatusBadge status={workOrder.status} />
+                  </td>
+                  <td className="px-3 py-2">
+                    {workOrder.assignee_name ?? '—'}
+                    {workOrder.assignment_response === 'pending' && (
+                      <span className="block text-xs text-amber-800">Waiting for a reply</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     {workOrder.due_date ? formatDay(workOrder.due_date) : '—'}

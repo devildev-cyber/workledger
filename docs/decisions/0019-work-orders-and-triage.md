@@ -47,7 +47,7 @@ Statuses: open, assigned, in progress, on hold, awaiting approval, ready for rev
 | closed | in progress |
 | cancelled | open |
 
-- `assigned` and `awaiting approval` belong to later phases (dispatch in Phase 5, approvals in Phase 7). They exist in the table so those phases do not need a migration, but they cannot be set by hand yet.
+- `assigned` is set by dispatch ([decision 0020](0020-dispatch-and-contractor-access.md)) and `awaiting approval` belongs to Phase 7. Neither can be set by hand.
 - Leaving `closed` or `cancelled` needs an administrator (`403` for a manager). Everything else is open to managers at the property.
 - A move the table does not allow is refused with `409` and an explanation. Every check runs before anything is changed, so a refused move leaves the work order, its history, its requests, and the activity log exactly as they were.
 - A closed or cancelled work order cannot be edited until an administrator reopens it.
@@ -61,11 +61,11 @@ Statuses: open, assigned, in progress, on hold, awaiting approval, ready for rev
 
 **Access**
 
-Administrators and managers only, and managers only at properties assigned to them. A work order at another property looks missing (`404`). Contractors and owners have no access yet (Phases 5 and 7).
+Administrators and managers only, and managers only at properties assigned to them. A work order at another property looks missing (`404`). Contractors see only their own assigned jobs, through a separate workspace ([decision 0020](0020-dispatch-and-contractor-access.md)). Owners have no access yet (Phase 7).
 
 ## Consequences
 
-- Filtering by assignee is not offered until assignment exists (Phase 5). Filters today are property, status, priority, search text, and age.
+- Filters are property, status, priority, contractor, search text, and age.
 - Searching reads titles, scope text, and reference numbers. Residents' names are searchable on requests only.
 - Lists show the newest 200. Paging is deferred until a real portfolio needs it.
 - Moving a status back from `completed` reopens its requests too. This is intended: a resident told "resolved" should hear if the problem returns.

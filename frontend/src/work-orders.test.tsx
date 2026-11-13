@@ -70,6 +70,9 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     due_date: '2026-12-01',
     overdue: false,
     request_count: 1,
+    assignee_id: null,
+    assignee_name: null,
+    assignment_response: null,
     created_at: '2026-11-10T10:00:00Z',
     updated_at: '2026-11-10T10:00:00Z',
     scope: 'Fit a new cartridge.',
@@ -95,16 +98,25 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
       },
     ],
     allowed_statuses: ['in_progress', 'on_hold', 'cancelled'],
+    assignment: null,
+    assignment_history: [],
+    attachments: [],
     ...overrides,
   }
 }
 
 function summaryOf(order: WorkOrder): WorkOrderSummary {
-  const { scope, linked_requests, history, allowed_statuses, ...rest } = order
-  void scope
-  void linked_requests
-  void history
-  void allowed_statuses
+  const {
+    scope,
+    linked_requests,
+    history,
+    allowed_statuses,
+    assignment,
+    assignment_history,
+    attachments,
+    ...rest
+  } = order
+  void [scope, linked_requests, history, allowed_statuses, assignment, assignment_history, attachments]
   return rest
 }
 
@@ -546,9 +558,16 @@ describe('work order page', () => {
     fireEvent.click(within(form).getByRole('button', { name: 'Add note' }))
     await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2))
 
+    fireEvent.change(within(form).getByLabelText('Note'), { target: { value: 'Use the side gate' } })
+    fireEvent.click(within(form).getByLabelText('Internal note, staff only'))
+    fireEvent.click(within(form).getByLabelText('Also share with the assigned contractor'))
+    fireEvent.click(within(form).getByRole('button', { name: 'Add note' }))
+    await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(3))
+
     expect(requests.filter((request) => request.method === 'POST').map((request) => request.body)).toEqual([
-      { body: 'Part ordered', visibility: 'internal' },
-      { body: 'Visit Thursday', visibility: 'resident' },
+      { body: 'Part ordered', visibility: 'internal', share_with_contractor: false },
+      { body: 'Visit Thursday', visibility: 'resident', share_with_contractor: false },
+      { body: 'Use the side gate', visibility: 'internal', share_with_contractor: true },
     ])
   })
 

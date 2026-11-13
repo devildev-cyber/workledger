@@ -246,11 +246,57 @@ export type WorkOrderSummary = {
   due_date: string | null
   overdue: boolean
   request_count: number
+  assignee_id: string | null
+  assignee_name: string | null
+  assignment_response: AssignmentResponse | null
   created_at: string
   updated_at: string
 }
 
-export type EntryKind = 'created' | 'status_changed' | 'edited' | 'note' | 'request_linked'
+export type EntryKind =
+  | 'created'
+  | 'status_changed'
+  | 'edited'
+  | 'note'
+  | 'request_linked'
+  | 'assigned'
+  | 'unassigned'
+  | 'assignment_accepted'
+  | 'assignment_declined'
+  | 'progress'
+  | 'clarification'
+
+export type AssignmentResponse = 'pending' | 'accepted' | 'declined'
+
+export type Assignment = {
+  id: string
+  contractor_id: string
+  contractor_name: string
+  assigned_by_name: string
+  assigned_at: string
+  response: AssignmentResponse
+  responded_at: string | null
+  decline_reason: string | null
+  ended_at: string | null
+  ended_reason: 'reassigned' | 'unassigned' | 'declined' | 'cancelled' | null
+}
+
+export type Contractor = {
+  id: string
+  full_name: string
+  email: string
+  active_jobs: number
+}
+
+export type WorkOrderAttachment = {
+  id: string
+  filename: string
+  content_type: string
+  size_bytes: number
+  contractor_visible: boolean
+  uploaded_by_name: string | null
+  created_at: string
+}
 
 export type WorkOrderEntry = {
   id: string
@@ -278,4 +324,58 @@ export type WorkOrder = WorkOrderSummary & {
   history: WorkOrderEntry[]
   // What this person can move it to by hand right now.
   allowed_statuses: WorkOrderStatus[]
+  assignment: Assignment | null
+  // Every assignment the work order has had, oldest first.
+  assignment_history: Assignment[]
+  attachments: WorkOrderAttachment[]
+}
+
+export type JobSummary = {
+  id: string
+  reference: string
+  title: string
+  status: WorkOrderStatus
+  priority: Urgency
+  category: RequestCategory
+  due_date: string | null
+  overdue: boolean
+  property_name: string
+  unit_label: string | null
+  building_name: string | null
+  response: AssignmentResponse
+}
+
+export type JobEntry = {
+  id: string
+  kind: EntryKind
+  // Left out of a status change made by someone else.
+  body: string | null
+  status: WorkOrderStatus | null
+  author: string
+  created_at: string
+}
+
+export type JobAttachment = {
+  id: string
+  filename: string
+  content_type: string
+  size_bytes: number
+  mine: boolean
+  created_at: string
+}
+
+export type Job = JobSummary & {
+  scope: string
+  street: string
+  city: string
+  region: string
+  postal_code: string
+  // First names and entry instructions arrive only once the job is accepted.
+  residents: string[]
+  access_notes: string[]
+  can_accept: boolean
+  can_decline: boolean
+  allowed_statuses: WorkOrderStatus[]
+  timeline: JobEntry[]
+  attachments: JobAttachment[]
 }

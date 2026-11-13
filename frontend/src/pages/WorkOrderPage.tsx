@@ -14,6 +14,10 @@ import {
 } from '../organizations/organizations.ts'
 import { CATEGORY_LABELS, URGENCY_SHORT } from '../requests/labels.ts'
 import { StatusBadge } from '../requests/StatusBadge.tsx'
+import { AssignmentPanel } from '../dispatch/AssignmentPanel.tsx'
+import { FileList } from '../dispatch/FileList.tsx'
+import { SHARE_WITH_CONTRACTOR } from '../dispatch/labels.ts'
+import { UploadForm } from '../requests/UploadForm.tsx'
 import { History } from '../workorders/History.tsx'
 import { NoteForm } from '../workorders/NoteForm.tsx'
 import { StatusControl } from '../workorders/StatusControl.tsx'
@@ -136,6 +140,34 @@ function WorkOrderDetail({
           url={`${url}/status`}
           allowed={workOrder.allowed_statuses}
           onChanged={reload}
+        />
+      </section>
+
+      <section aria-labelledby="contractor-heading" className="space-y-3">
+        <h2 id="contractor-heading" className="text-xl font-semibold">
+          Contractor
+        </h2>
+        <AssignmentPanel organizationId={organizationId} workOrder={workOrder} onChanged={reload} />
+      </section>
+
+      <section aria-labelledby="files-heading" className="space-y-3">
+        <h2 id="files-heading" className="text-xl font-semibold">
+          Files
+        </h2>
+        <FileList
+          files={workOrder.attachments}
+          baseUrl={`${url}/attachments`}
+          note={(file) => {
+            const item = workOrder.attachments.find((candidate) => candidate.id === file.id)
+            return item?.contractor_visible ? 'Shared with the contractor' : 'Staff only'
+          }}
+        />
+        <UploadForm
+          url={`${url}/attachments`}
+          canShare
+          shareLabel="Share with the contractor"
+          shareQuery={SHARE_WITH_CONTRACTOR}
+          onUploaded={reload}
         />
       </section>
 

@@ -6,13 +6,25 @@ about it. Several reports of the same problem can share one work order.
 
 import enum
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
+from app.db.types import UTCDateTime
 
 
 class WorkOrderStatus(enum.StrEnum):
@@ -56,6 +68,28 @@ class EntryKind(enum.StrEnum):
     EDITED = "edited"
     NOTE = "note"
     REQUEST_LINKED = "request_linked"
+    ASSIGNED = "assigned"
+    UNASSIGNED = "unassigned"
+    ASSIGNMENT_ACCEPTED = "assignment_accepted"
+    ASSIGNMENT_DECLINED = "assignment_declined"
+    # What a contractor writes. A clarification is a question the manager should answer.
+    PROGRESS = "progress"
+    CLARIFICATION = "clarification"
+
+
+class AssignmentResponse(enum.StrEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+
+
+class AssignmentEnd(enum.StrEnum):
+    """Why an assignment stopped being the current one."""
+
+    REASSIGNED = "reassigned"
+    UNASSIGNED = "unassigned"
+    DECLINED = "declined"
+    CANCELLED = "cancelled"
 
 
 class WorkOrderCounter(Base):
@@ -109,3 +143,57 @@ class WorkOrderEntry(TimestampMixin, Base):
     status_after: Mapped[str | None] = mapped_column(String(32))
     # For edits: {"field": [before, after]}.
     details: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # Whether the contractor on the job may read this entry (decision 0020).
+    contractor_visible: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
+class WorkOrderAssignment(TimestampMixin, Base):
+    """The contractor responsible for a work order, for a period of time.
+
+    Reassigning ends the current row and adds a new one, so the full history stays. At most
+    one assignment per work order is current (decision 0020).
+    """
+
+    __tablename__ = "work_order_assignments"
+    __table_args__ = (
+        Index(
+            "uq_work_order_assignments_current",
+            "work_order_id",
+            unique=True,
+            sqlite_where=text("ended_at IS NULL"),
+            postgresql_where=text("ended_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    # The contractor's membership in this organization, not their account, so the same person
+    # working for two firms has two unrelated sets of jobs.
+    contractor_membership_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("memberships.id"), index=True
+    )
+    assigned_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    assigned_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    response: Mapped[str] = mapped_column(String(16), default=AssignmentResponse.PENDING)
+    responded_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    decline_reason: Mapped[str | None] = mapped_column(Text)
+    ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    ended_reason: Mapped[str | None] = mapped_column(String(16))
+
+
+class WorkOrderAttachment(TimestampMixin, Base):
+    """A photo or document on a work order, such as evidence that the work was done."""
+
+    __tablename__ = "work_order_attachments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # What the contractor on the job may open. Their own uploads always are.
+    contractor_visible: Mapped[bool] = mapped_column(Boolean, default=False)
+    filename: Mapped[str] = mapped_column(String(200))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300), unique=True)

@@ -5,10 +5,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.storage import FileStore
-from app.models import EventType, MaintenanceRequest, RequestAttachment, User, Visibility
+from app.models import (
+    EventType,
+    MaintenanceRequest,
+    RequestAttachment,
+    User,
+    Visibility,
+    WorkOrder,
+    WorkOrderAttachment,
+)
 from app.services.activity import record_event
 
 MAX_ATTACHMENTS_PER_REQUEST = 10
+MAX_ATTACHMENTS_PER_WORK_ORDER = 20
 MAX_FILENAME_LENGTH = 120
 
 
@@ -121,4 +130,88 @@ def get_attachment(
     )
     if not include_internal:
         statement = statement.where(RequestAttachment.visibility == Visibility.RESIDENT)
+    return db.scalar(statement)
+
+
+def add_work_order_attachment(
+    db: Session,
+    store: FileStore,
+    work_order: WorkOrder,
+    *,
+    actor: User,
+    filename: str,
+    data: bytes,
+    contractor_visible: bool,
+) -> WorkOrderAttachment:
+    """Photos and documents on a work order, such as evidence that the work was done."""
+    if not data:
+        raise AttachmentError("The file is empty")
+    content_type = detect_content_type(data)
+    if content_type is None:
+        raise AttachmentError("Only JPEG, PNG, WebP images and PDF files can be attached")
+
+    existing = db.scalar(
+        select(func.count())
+        .select_from(WorkOrderAttachment)
+        .where(WorkOrderAttachment.work_order_id == work_order.id)
+    )
+    if (existing or 0) >= MAX_ATTACHMENTS_PER_WORK_ORDER:
+        raise AttachmentLimitError(
+            f"A work order can have at most {MAX_ATTACHMENTS_PER_WORK_ORDER} attachments"
+        )
+
+    attachment_id = uuid.uuid4()
+    storage_key = f"{work_order.organization_id}/work-orders/{work_order.id}/{attachment_id}"
+    store.save(storage_key, data)
+
+    attachment = WorkOrderAttachment(
+        id=attachment_id,
+        organization_id=work_order.organization_id,
+        work_order_id=work_order.id,
+        uploaded_by_user_id=actor.id,
+        contractor_visible=contractor_visible,
+        filename=clean_filename(filename),
+        content_type=content_type,
+        size_bytes=len(data),
+        storage_key=storage_key,
+    )
+    db.add(attachment)
+    db.flush()
+    record_event(
+        db,
+        event_type=EventType.WORK_ORDER_ATTACHMENT_ADDED,
+        organization_id=work_order.organization_id,
+        actor=actor,
+        subject_type="work_order",
+        subject_id=work_order.id,
+        after={
+            "attachment_id": str(attachment.id),
+            "content_type": content_type,
+            "size_bytes": len(data),
+            "contractor_visible": contractor_visible,
+        },
+    )
+    return attachment
+
+
+def work_order_attachments(
+    db: Session, work_order_id: uuid.UUID, *, contractor_only: bool
+) -> list[WorkOrderAttachment]:
+    statement = select(WorkOrderAttachment).where(
+        WorkOrderAttachment.work_order_id == work_order_id
+    )
+    if contractor_only:
+        statement = statement.where(WorkOrderAttachment.contractor_visible.is_(True))
+    return list(db.scalars(statement.order_by(WorkOrderAttachment.created_at)))
+
+
+def get_work_order_attachment(
+    db: Session, *, work_order_id: uuid.UUID, attachment_id: uuid.UUID, contractor_only: bool
+) -> WorkOrderAttachment | None:
+    statement = select(WorkOrderAttachment).where(
+        WorkOrderAttachment.id == attachment_id,
+        WorkOrderAttachment.work_order_id == work_order_id,
+    )
+    if contractor_only:
+        statement = statement.where(WorkOrderAttachment.contractor_visible.is_(True))
     return db.scalar(statement)

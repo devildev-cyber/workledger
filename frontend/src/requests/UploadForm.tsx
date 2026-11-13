@@ -9,10 +9,23 @@ type UploadFormProps = {
   url: string
   // Staff choose whether the resident can see the file. Residents do not get the choice.
   canShare?: boolean
+  // Wording and query for the sharing choice. Requests share with the resident by default.
+  shareLabel?: string
+  shareQuery?: (share: boolean) => Record<string, string>
+  label?: string
   onUploaded: () => void
 }
 
-export function UploadForm({ url, canShare = false, onUploaded }: UploadFormProps) {
+const SHARE_WITH_RESIDENT = (share: boolean) => ({ visibility: share ? 'resident' : 'internal' })
+
+export function UploadForm({
+  url,
+  canShare = false,
+  shareLabel = 'Visible to the resident',
+  shareQuery = SHARE_WITH_RESIDENT,
+  label = 'Add a photo or PDF',
+  onUploaded,
+}: UploadFormProps) {
   const input = useRef<HTMLInputElement>(null)
   const [share, setShare] = useState(false)
   const { busy, error, run, fail } = useAction()
@@ -34,7 +47,7 @@ export function UploadForm({ url, canShare = false, onUploaded }: UploadFormProp
       api(url, {
         method: 'POST',
         file,
-        query: { filename: file.name, ...(canShare ? { visibility: share ? 'resident' : 'internal' } : {}) },
+        query: { filename: file.name, ...(canShare ? shareQuery(share) : {}) },
       }),
     )
     if (uploaded) {
@@ -49,7 +62,7 @@ export function UploadForm({ url, canShare = false, onUploaded }: UploadFormProp
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <label htmlFor="attach-file" className="block text-sm font-medium text-slate-700">
-            Add a photo or PDF
+            {label}
           </label>
           <input
             id="attach-file"
@@ -62,7 +75,7 @@ export function UploadForm({ url, canShare = false, onUploaded }: UploadFormProp
         {canShare && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-            Visible to the resident
+            {shareLabel}
           </label>
         )}
         <button

@@ -13,6 +13,7 @@ from app.models import (
     FINAL_STATUSES,
     SYSTEM_STATUSES,
     TRANSITIONS,
+    AssignmentEnd,
     Building,
     EntryKind,
     EventType,
@@ -25,6 +26,7 @@ from app.models import (
     User,
     Visibility,
     WorkOrder,
+    WorkOrderAssignment,
     WorkOrderCounter,
     WorkOrderEntry,
     WorkOrderStatus,
@@ -92,7 +94,7 @@ def allowed_next_statuses(
 # --- History ----------------------------------------------------------------------------
 
 
-def _add_entry(
+def add_entry(
     db: Session,
     work_order: WorkOrder,
     *,
@@ -102,6 +104,7 @@ def _add_entry(
     body: str | None = None,
     status_after: WorkOrderStatus | None = None,
     details: dict[str, Any] | None = None,
+    contractor_visible: bool = False,
 ) -> WorkOrderEntry:
     entry = WorkOrderEntry(
         organization_id=work_order.organization_id,
@@ -112,6 +115,7 @@ def _add_entry(
         body=body,
         status_after=status_after,
         details=details,
+        contractor_visible=contractor_visible,
     )
     db.add(entry)
     db.flush()
@@ -149,7 +153,7 @@ def create_work_order(
     )
     db.add(work_order)
     db.flush()
-    _add_entry(
+    add_entry(
         db, work_order, actor=actor, kind=EntryKind.CREATED, status_after=WorkOrderStatus.OPEN
     )
     record_event(
@@ -173,7 +177,7 @@ def link_request(
 ) -> None:
     """Attach a request to a work order. From now on the work order decides its status."""
     request.work_order_id = work_order.id
-    _add_entry(
+    add_entry(
         db,
         work_order,
         actor=actor,
@@ -254,7 +258,7 @@ def mark_duplicate(
 # --- Changing ---------------------------------------------------------------------------
 
 
-def _sync_requests(db: Session, work_order: WorkOrder, *, actor: User) -> None:
+def sync_requests(db: Session, work_order: WorkOrder, *, actor: User) -> None:
     target = REQUEST_STATUS_FOR[WorkOrderStatus(work_order.status)]
     for request in db.scalars(
         select(MaintenanceRequest).where(MaintenanceRequest.work_order_id == work_order.id)
@@ -270,8 +274,11 @@ def change_status(
     new_status: WorkOrderStatus,
     note: str | None,
     is_administrator: bool,
+    system: bool = False,
 ) -> None:
     """Move a work order along its lifecycle.
+
+    `system` is for dispatch, which sets the assigned status as a side effect of assigning.
 
     Every check happens before anything is changed, so a refused move leaves the work order,
     its history, and its requests exactly as they were.
@@ -281,20 +288,21 @@ def change_status(
         raise WorkOrderError("The work order already has this status")
     if new_status not in TRANSITIONS[current]:
         raise WorkOrderError(f"A work order cannot move from {current.value} to {new_status.value}")
-    if new_status in SYSTEM_STATUSES:
+    if new_status in SYSTEM_STATUSES and not system:
         raise WorkOrderError("That status is set automatically by assignment and approvals")
     if current in ADMINISTRATOR_ONLY_FROM and not is_administrator:
         raise NotPermittedError("Only an administrator can reopen a finished work order")
 
     work_order.status = new_status
     work_order.updated_at = utc_now()
-    _add_entry(
+    add_entry(
         db,
         work_order,
         actor=actor,
         kind=EntryKind.STATUS_CHANGED,
         body=note,
         status_after=new_status,
+        contractor_visible=True,
     )
     record_event(
         db,
@@ -306,7 +314,27 @@ def change_status(
         before={"status": current},
         after={"status": new_status},
     )
-    _sync_requests(db, work_order, actor=actor)
+    if new_status == WorkOrderStatus.CANCELLED:
+        # A cancelled job disappears from the contractor's list.
+        end_current_assignment(db, work_order, reason=AssignmentEnd.CANCELLED)
+    sync_requests(db, work_order, actor=actor)
+
+
+def end_current_assignment(
+    db: Session, work_order: WorkOrder, *, reason: AssignmentEnd
+) -> WorkOrderAssignment | None:
+    """Stop the current assignment, keeping the row as history."""
+    current = db.scalar(
+        select(WorkOrderAssignment).where(
+            WorkOrderAssignment.work_order_id == work_order.id,
+            WorkOrderAssignment.ended_at.is_(None),
+        )
+    )
+    if current is not None:
+        current.ended_at = utc_now()
+        current.ended_reason = reason
+        db.flush()
+    return current
 
 
 def update_details(
@@ -327,7 +355,14 @@ def update_details(
         return False
 
     work_order.updated_at = utc_now()
-    _add_entry(db, work_order, actor=actor, kind=EntryKind.EDITED, details=changes)
+    add_entry(
+        db,
+        work_order,
+        actor=actor,
+        kind=EntryKind.EDITED,
+        details=changes,
+        contractor_visible=True,
+    )
     record_event(
         db,
         event_type=EventType.WORK_ORDER_UPDATED,
@@ -351,11 +386,18 @@ def add_note(
     actor: User,
     body: str,
     visibility: Visibility,
+    share_with_contractor: bool = False,
 ) -> WorkOrderEntry:
     """A note on the work order. One shared with the resident also appears on every linked
     request, because that is where the resident looks."""
-    entry = _add_entry(
-        db, work_order, actor=actor, kind=EntryKind.NOTE, visibility=visibility, body=body
+    entry = add_entry(
+        db,
+        work_order,
+        actor=actor,
+        kind=EntryKind.NOTE,
+        visibility=visibility,
+        body=body,
+        contractor_visible=share_with_contractor,
     )
     work_order.updated_at = utc_now()
     if visibility == Visibility.RESIDENT:
@@ -382,6 +424,13 @@ def _rows(db: Session, statement: Select[tuple[WorkOrder]]) -> list[WorkOrderRow
     ]
 
 
+def rows_for_ids(db: Session, work_order_ids: list[uuid.UUID]) -> list[WorkOrderRow]:
+    """Rows for specific work orders. The caller has already decided they may be seen."""
+    if not work_order_ids:
+        return []
+    return _rows(db, select(WorkOrder).where(WorkOrder.id.in_(work_order_ids)))
+
+
 def get_for_staff(
     db: Session, *, organization_id: uuid.UUID, scope: PropertyScope, work_order_id: uuid.UUID
 ) -> WorkOrderRow | None:
@@ -405,8 +454,18 @@ def list_for_staff(
     property_id: uuid.UUID | None = None,
     search: str | None = None,
     older_than_days: int | None = None,
+    assignee_id: uuid.UUID | None = None,
+    unassigned: bool = False,
 ) -> list[WorkOrderRow]:
     statement = select(WorkOrder).where(WorkOrder.organization_id == organization_id)
+    current = select(WorkOrderAssignment.work_order_id).where(
+        WorkOrderAssignment.ended_at.is_(None)
+    )
+    if assignee_id is not None:
+        current_for = current.where(WorkOrderAssignment.contractor_membership_id == assignee_id)
+        statement = statement.where(WorkOrder.id.in_(current_for))
+    if unassigned:
+        statement = statement.where(WorkOrder.id.not_in(current))
     if not scope.unrestricted:
         statement = statement.where(WorkOrder.property_id.in_(scope.property_ids))
     if status is not None:

@@ -2,21 +2,24 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 
 from app.api.access import OrganizationContext, require_roles
 from app.api.deps import DbSession
-from app.models import Role, Urgency, WorkOrderStatus
+from app.models import Role, Urgency, User, WorkOrderStatus
 from app.schemas.work_orders import (
+    AssignmentOut,
     LinkedRequestOut,
     NoteIn,
     StatusChangeIn,
+    WorkOrderAttachmentOut,
     WorkOrderEditIn,
     WorkOrderEntryOut,
     WorkOrderIn,
     WorkOrderOut,
     WorkOrderSummaryOut,
 )
-from app.services import directory, requests, residents, work_orders
+from app.services import attachments, directory, dispatch, requests, residents, work_orders
 from app.services.work_orders import NotPermittedError, WorkOrderError, WorkOrderRow
 
 router = APIRouter(prefix="/organizations/{organization_id}", tags=["work orders"])
@@ -39,7 +42,9 @@ def _is_administrator(context: OrganizationContext) -> bool:
     return Role.ADMINISTRATOR in context.roles
 
 
-def _summary(row: WorkOrderRow, request_count: int) -> WorkOrderSummaryOut:
+def _summary(
+    row: WorkOrderRow, request_count: int, assignee: dispatch.Assignee | None
+) -> WorkOrderSummaryOut:
     work_order = row.work_order
     return WorkOrderSummaryOut(
         id=work_order.id,
@@ -55,6 +60,9 @@ def _summary(row: WorkOrderRow, request_count: int) -> WorkOrderSummaryOut:
         due_date=work_order.due_date,
         overdue=work_orders.is_overdue(work_order, residents.today()),
         request_count=request_count,
+        assignee_id=assignee.assignment.contractor_membership_id if assignee else None,
+        assignee_name=assignee.name if assignee else None,
+        assignment_response=assignee.assignment.response if assignee else None,
         created_at=work_order.created_at,
         updated_at=work_order.updated_at,
     )
@@ -68,8 +76,17 @@ def build_work_order(
         db, organization_id=context.organization.id, work_order_id=work_order_id
     )
     current = WorkOrderStatus(row.work_order.status)
+    assignee = dispatch.assignees_for(db, [work_order_id]).get(work_order_id)
+    history = dispatch.assignment_history(db, work_order_id)
+    files = attachments.work_order_attachments(db, work_order_id, contractor_only=False)
+    uploaders = {
+        user.id: user.full_name
+        for user in db.scalars(
+            select(User).where(User.id.in_({item.uploaded_by_user_id for item in files}))
+        )
+    }
     return WorkOrderOut(
-        **_summary(row, len(linked)).model_dump(),
+        **_summary(row, len(linked), assignee).model_dump(),
         scope=row.work_order.scope,
         linked_requests=[
             LinkedRequestOut(
@@ -94,9 +111,41 @@ def build_work_order(
             )
             for entry, author in work_orders.history(db, work_order_id)
         ],
+        assignment=next(
+            (assignment_out(item) for item in history if item.assignment.ended_at is None), None
+        ),
+        assignment_history=[assignment_out(item) for item in history],
+        attachments=[
+            WorkOrderAttachmentOut(
+                id=item.id,
+                filename=item.filename,
+                content_type=item.content_type,
+                size_bytes=item.size_bytes,
+                contractor_visible=item.contractor_visible,
+                uploaded_by_name=uploaders.get(item.uploaded_by_user_id),
+                created_at=item.created_at,
+            )
+            for item in files
+        ],
         allowed_statuses=work_orders.allowed_next_statuses(
             current, is_administrator=_is_administrator(context)
         ),
+    )
+
+
+def assignment_out(record: dispatch.AssignmentRecord) -> AssignmentOut:
+    item = record.assignment
+    return AssignmentOut(
+        id=item.id,
+        contractor_id=item.contractor_membership_id,
+        contractor_name=record.contractor_name,
+        assigned_by_name=record.assigned_by_name,
+        assigned_at=item.assigned_at,
+        response=item.response,
+        responded_at=item.responded_at,
+        decline_reason=item.decline_reason,
+        ended_at=item.ended_at,
+        ended_reason=item.ended_reason,
     )
 
 
@@ -122,6 +171,8 @@ def list_work_orders(
     property_id: uuid.UUID | None = None,
     q: Annotated[str | None, Query(max_length=100)] = None,
     older_than_days: Annotated[int | None, Query(ge=0, le=3650)] = None,
+    assignee_id: uuid.UUID | None = None,
+    unassigned: bool = False,
 ) -> list[WorkOrderSummaryOut]:
     rows = work_orders.list_for_staff(
         db,
@@ -133,9 +184,16 @@ def list_work_orders(
         property_id=property_id,
         search=q,
         older_than_days=older_than_days,
+        assignee_id=assignee_id,
+        unassigned=unassigned,
     )
-    counts = work_orders.request_counts(db, [row.work_order.id for row in rows])
-    return [_summary(row, counts.get(row.work_order.id, 0)) for row in rows]
+    ids = [row.work_order.id for row in rows]
+    counts = work_orders.request_counts(db, ids)
+    assignees = dispatch.assignees_for(db, ids)
+    return [
+        _summary(row, counts.get(row.work_order.id, 0), assignees.get(row.work_order.id))
+        for row in rows
+    ]
 
 
 @router.post("/work-orders", status_code=status.HTTP_201_CREATED)
@@ -213,7 +271,12 @@ def add_work_order_note(
 ) -> WorkOrderOut:
     row = _get(db, context, work_order_id)
     work_orders.add_note(
-        db, row.work_order, actor=context.user, body=body.body, visibility=body.visibility
+        db,
+        row.work_order,
+        actor=context.user,
+        body=body.body,
+        visibility=body.visibility,
+        share_with_contractor=body.share_with_contractor,
     )
     db.commit()
     return build_work_order(db, context, work_order_id)

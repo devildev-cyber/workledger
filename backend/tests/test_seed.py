@@ -154,3 +154,26 @@ def test_the_demo_has_a_queue_to_triage_and_work_orders_to_follow(
     assert {item["status"] for item in work_orders} == {"in_progress", "completed", "on_hold"}
     # The emergency at Oak Terrace is past its due date.
     assert [item["title"] for item in everything if item["overdue"]] == ["No hot water"]
+
+
+def test_the_demo_contractor_has_jobs_in_different_states(
+    client_factory: ClientFactory, seeded: Organization
+) -> None:
+    base = f"/api/organizations/{seeded.id}"
+    contractor = sign_in_as(client_factory, "contractor@demo.example")
+
+    jobs = contractor.get(f"{base}/my-jobs").json()
+    everything = sign_in_as(client_factory, ADMIN_EMAIL).get(f"{base}/work-orders").json()
+
+    assert len(jobs) == 3
+    assert {(job["status"], job["response"]) for job in jobs} == {
+        ("in_progress", "accepted"),
+        ("completed", "accepted"),
+        ("assigned", "pending"),
+    }
+    # Two work orders have no contractor, so the manager has something to assign.
+    assert sum(1 for item in everything if item["assignee_id"] is None) == 2
+    # The pending job is the one waiting for a reply, and shows no resident details yet.
+    waiting = next(job for job in jobs if job["response"] == "pending")
+    detail = contractor.get(f"{base}/my-jobs/{waiting['id']}").json()
+    assert detail["residents"] == [] and detail["access_notes"] == []

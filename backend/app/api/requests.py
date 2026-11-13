@@ -1,14 +1,13 @@
 import uuid
 from typing import Annotated
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
 from app.api.access import OrganizationContext, require_roles
 from app.api.deps import DbSession, FileStoreDep
+from app.api.uploads import FilenameQuery, file_response, read_upload
 from app.api.work_orders import build_work_order
-from app.core.storage import FileNotStoredError
 from app.models import (
     FINISHED_STATUSES,
     MaintenanceRequest,
@@ -47,9 +46,6 @@ ResidentContext = Annotated[OrganizationContext, Depends(require_roles(Role.RESI
 StaffContext = Annotated[
     OrganizationContext, Depends(require_roles(Role.ADMINISTRATOR, Role.MANAGER))
 ]
-
-# Images are shown in the page. Everything else is downloaded.
-INLINE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 
 def _not_found(what: str = "Request") -> HTTPException:
@@ -450,26 +446,6 @@ def decline_request(
 # --- Attachments ------------------------------------------------------------------------
 
 
-async def _read_upload(request: Request, limit: int) -> bytes:
-    """Read the body, refusing as soon as it is too large rather than after it is all in memory."""
-    too_large = HTTPException(
-        status.HTTP_413_CONTENT_TOO_LARGE,
-        f"Files can be at most {limit // (1024 * 1024)} MB",
-    )
-    declared = request.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > limit:
-        raise too_large
-
-    chunks: list[bytes] = []
-    total = 0
-    async for chunk in request.stream():
-        total += len(chunk)
-        if total > limit:
-            raise too_large
-        chunks.append(chunk)
-    return b"".join(chunks)
-
-
 def _save_attachment(
     db: DbSession,
     store: FileStoreDep,
@@ -498,27 +474,6 @@ def _save_attachment(
     return saved
 
 
-def _file_response(store: FileStoreDep, item: RequestAttachment) -> Response:
-    try:
-        data = store.read(item.storage_key)
-    except FileNotStoredError as error:
-        raise _not_found("File") from error
-    disposition = "inline" if item.content_type in INLINE_TYPES else "attachment"
-    return Response(
-        content=data,
-        media_type=item.content_type,
-        headers={
-            "Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(item.filename)}",
-            # The type was decided from the file's bytes. Browsers must not second-guess it.
-            "X-Content-Type-Options": "nosniff",
-            "Cache-Control": "private, no-store",
-        },
-    )
-
-
-FilenameQuery = Annotated[str, Query(min_length=1, max_length=255)]
-
-
 @router.post("/my-requests/{request_id}/attachments", status_code=status.HTTP_201_CREATED)
 async def attach_to_my_request(
     request_id: uuid.UUID,
@@ -531,7 +486,7 @@ async def attach_to_my_request(
     row = await run_in_threadpool(_own_request, db, context, request_id)
     if row.request.status in FINISHED_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "This request is finished")
-    data = await _read_upload(request, request.app.state.settings.max_upload_bytes)
+    data = await read_upload(request, request.app.state.settings.max_upload_bytes)
     saved = await run_in_threadpool(
         _save_attachment, db, store, row, context, filename, data, Visibility.RESIDENT
     )
@@ -552,7 +507,7 @@ def download_my_attachment(
     )
     if item is None:
         raise _not_found("File")
-    return _file_response(store, item)
+    return file_response(store, item)
 
 
 @router.post("/requests/{request_id}/attachments", status_code=status.HTTP_201_CREATED)
@@ -566,7 +521,7 @@ async def attach_to_request(
     visibility: Visibility = Visibility.INTERNAL,
 ) -> StaffAttachmentOut:
     row = await run_in_threadpool(_staff_request, db, context, request_id)
-    data = await _read_upload(request, request.app.state.settings.max_upload_bytes)
+    data = await read_upload(request, request.app.state.settings.max_upload_bytes)
     saved = await run_in_threadpool(
         _save_attachment, db, store, row, context, filename, data, visibility
     )
@@ -587,4 +542,4 @@ def download_attachment(
     )
     if item is None:
         raise _not_found("File")
-    return _file_response(store, item)
+    return file_response(store, item)

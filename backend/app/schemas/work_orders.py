@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field
 
 from app.models import (
+    AssignmentResponse,
     EntryKind,
     RequestCategory,
     RequestStatus,
@@ -56,6 +57,13 @@ class StatusChangeIn(BaseModel):
 class NoteIn(BaseModel):
     body: Annotated[Text, Field(min_length=1, max_length=2000)]
     visibility: Visibility = Visibility.INTERNAL
+    # Notes are for staff only unless the manager also shares them with the contractor.
+    share_with_contractor: bool = False
+
+
+class AssignIn(BaseModel):
+    # The contractor's membership ID, as listed by GET /contractors.
+    contractor_id: uuid.UUID
 
 
 class DeclineIn(BaseModel):
@@ -75,6 +83,36 @@ class WorkOrderRefOut(BaseModel):
     status: WorkOrderStatus
 
 
+class AssignmentOut(BaseModel):
+    id: uuid.UUID
+    contractor_id: uuid.UUID
+    contractor_name: str
+    assigned_by_name: str
+    assigned_at: datetime
+    response: AssignmentResponse
+    responded_at: datetime | None
+    decline_reason: str | None
+    ended_at: datetime | None
+    ended_reason: str | None
+
+
+class ContractorOut(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    email: str
+    active_jobs: int
+
+
+class WorkOrderAttachmentOut(BaseModel):
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    contractor_visible: bool
+    uploaded_by_name: str | None
+    created_at: datetime
+
+
 class WorkOrderSummaryOut(BaseModel):
     id: uuid.UUID
     reference: str
@@ -89,6 +127,9 @@ class WorkOrderSummaryOut(BaseModel):
     due_date: date | None
     overdue: bool
     request_count: int
+    assignee_id: uuid.UUID | None
+    assignee_name: str | None
+    assignment_response: AssignmentResponse | None
     created_at: datetime
     updated_at: datetime
 
@@ -116,5 +157,8 @@ class WorkOrderOut(WorkOrderSummaryOut):
     scope: str
     linked_requests: list[LinkedRequestOut]
     history: list[WorkOrderEntryOut]
+    assignment: AssignmentOut | None
+    assignment_history: list[AssignmentOut]
+    attachments: list[WorkOrderAttachmentOut]
     # What this person can move it to by hand right now.
     allowed_statuses: list[WorkOrderStatus]
