@@ -7,6 +7,7 @@ import { useApiData } from '../api/useApiData.ts'
 import { useCurrentUser } from '../auth/auth-context.ts'
 import { BuildingsSection } from '../directory/BuildingsSection.tsx'
 import { ManagersSection } from '../directory/ManagersSection.tsx'
+import { OwnersSection } from '../directory/OwnersSection.tsx'
 import { PropertyForm } from '../directory/PropertyForm.tsx'
 import type { PropertyValues } from '../directory/property-values.ts'
 import { MaintenanceHistory } from '../review/MaintenanceHistory.tsx'
@@ -150,6 +151,7 @@ function PropertyDetail({
         units={units.data}
       />
       {isAdministrator && <ManagersSection url={`${url}/managers`} />}
+      {isAdministrator && <OwnersSection url={`${url}/owners`} />}
     </div>
   )
 }

@@ -45,6 +45,6 @@ A contractor saying "done" is a claim, not a result. A manager needs to check it
 ## Consequences
 
 - Residents are informed, not asked. If the problem is not fixed they can message staff, and a manager can reopen the work order. A confirmation step can be added later without changing this.
-- Costs are staff-only. Owners will see an estimate and a decision in Phase 7, not these figures.
+- Costs are staff-only. Property owners see an estimate and its decision ([decision 0022](0022-estimates-and-owner-approvals.md)), not these figures.
 - A cost recorded in one currency is not converted. Reports (Phase 9) must group by currency.
 - The contractor's own invoice or quote is not recorded yet. Estimates arrive in Phase 7.

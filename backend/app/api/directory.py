@@ -13,18 +13,20 @@ from app.schemas.directory import (
     EndTenancyIn,
     ManagerOut,
     MyHomeOut,
+    OwnerOut,
     PropertyIn,
     PropertyOut,
     ResidentIn,
     ResidentOut,
     ResidentRefOut,
     SetManagersIn,
+    SetOwnersIn,
     StartTenancyIn,
     TenancyOut,
     UnitIn,
     UnitOut,
 )
-from app.services import assignments, directory, residents
+from app.services import assignments, directory, ownerships, residents
 from app.services.residents import Placement, TenancyError
 
 router = APIRouter(prefix="/organizations/{organization_id}", tags=["directory"])
@@ -151,6 +153,19 @@ def _managers_out(db: DbSession, property_: Property) -> list[ManagerOut]:
             assigned=membership.id in assigned,
         )
         for membership in assignments.manager_memberships(db, property_.organization_id)
+    ]
+
+
+def _owners_out(db: DbSession, property_: Property) -> list[OwnerOut]:
+    assigned = ownerships.owned_membership_ids(db, property_.id)
+    return [
+        OwnerOut(
+            membership_id=membership.id,
+            full_name=membership.user.full_name,
+            email=membership.user.email,
+            assigned=membership.id in assigned,
+        )
+        for membership in ownerships.owner_memberships(db, property_.organization_id)
     ]
 
 
@@ -321,6 +336,33 @@ def set_property_managers(
         raise HTTPException(422, "Only members with the manager role can be assigned") from None
     db.commit()
     return _managers_out(db, property_)
+
+
+# --- Owners of a property ---------------------------------------------------------------
+
+
+@router.get("/properties/{property_id}/owners")
+def list_property_owners(
+    property_id: uuid.UUID, context: AdminContext, db: DbSession
+) -> list[OwnerOut]:
+    return _owners_out(db, _property_for(db, context, property_id))
+
+
+@router.put("/properties/{property_id}/owners")
+def set_property_owners(
+    property_id: uuid.UUID, body: SetOwnersIn, context: AdminContext, db: DbSession
+) -> list[OwnerOut]:
+    property_ = _property_for(db, context, property_id)
+    try:
+        ownerships.set_property_owners(
+            db, property_, membership_ids=body.membership_ids, actor=context.user
+        )
+    except ownerships.NotAnOwnerError:
+        raise HTTPException(
+            422, "Only members with the property owner role can be given a property"
+        ) from None
+    db.commit()
+    return _owners_out(db, property_)
 
 
 # --- Residents --------------------------------------------------------------------------

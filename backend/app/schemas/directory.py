@@ -163,3 +163,14 @@ class ManagerOut(BaseModel):
 
 class SetManagersIn(BaseModel):
     membership_ids: list[uuid.UUID]
+
+
+class OwnerOut(BaseModel):
+    membership_id: uuid.UUID
+    full_name: str
+    email: str
+    assigned: bool
+
+
+class SetOwnersIn(BaseModel):
+    membership_ids: list[uuid.UUID]

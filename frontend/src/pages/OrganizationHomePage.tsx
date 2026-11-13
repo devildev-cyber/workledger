@@ -3,9 +3,11 @@ import { Link, useParams } from 'react-router'
 
 import { useCurrentUser } from '../auth/auth-context.ts'
 import {
+  approvalsPath,
   canSeeDirectory,
   findMembership,
   isContractor,
+  isPropertyOwner,
   isResident,
   myJobsPath,
   myRequestsPath,
@@ -33,9 +35,7 @@ export function OrganizationHomePage() {
   return (
     <section className="space-y-3">
       <h1 className="text-2xl font-semibold">{membership.organization_name}</h1>
-      <p className="text-slate-600">
-        Your roles: {membership.roles.map(roleLabel).join(', ')}
-      </p>
+      <p className="text-slate-600">Your roles: {membership.roles.map(roleLabel).join(', ')}</p>
       {isResident(membership.roles) && (
         <p>
           <Link to={`${myRequestsPath(membership.organization_id)}/new`} className="underline">
@@ -47,6 +47,13 @@ export function OrganizationHomePage() {
         <p>
           <Link to={myJobsPath(membership.organization_id)} className="underline">
             See my jobs
+          </Link>
+        </p>
+      )}
+      {isPropertyOwner(membership.roles) && (
+        <p>
+          <Link to={approvalsPath(membership.organization_id)} className="underline">
+            See estimates waiting for approval
           </Link>
         </p>
       )}

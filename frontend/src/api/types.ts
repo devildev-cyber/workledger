@@ -130,13 +130,7 @@ export type RequestCategory =
 export type Urgency = 'routine' | 'soon' | 'urgent' | 'emergency'
 
 export type RequestStatus =
-  | 'submitted'
-  | 'in_review'
-  | 'in_progress'
-  | 'resolved'
-  | 'closed'
-  | 'cancelled'
-  | 'declined'
+  'submitted' | 'in_review' | 'in_progress' | 'resolved' | 'closed' | 'cancelled' | 'declined'
 
 export type TimelineKind = 'submitted' | 'status_changed' | 'message' | 'note'
 
@@ -270,6 +264,9 @@ export type EntryKind =
   | 'clarification'
   | 'verified'
   | 'sent_back'
+  | 'estimate_submitted'
+  | 'estimate_approved'
+  | 'estimate_rejected'
 
 export type AssignmentResponse = 'pending' | 'accepted' | 'declined'
 
@@ -338,6 +335,95 @@ export type WorkOrder = WorkOrderSummary & {
   resolution: string | null
   verified_by_name: string | null
   verified_at: string | null
+  // Newest first. Every estimate the work order has had, with the owner's decision on each.
+  estimates: Estimate[]
+  approval_threshold_cents: number | null
+  // The property owners who would decide, by name. Empty means nobody can yet.
+  owner_names: string[]
+  // Why work cannot go ahead yet, if it cannot.
+  approval_hold: string | null
+  can_record_estimate: boolean
+  cost_check: CostCheck | null
+}
+
+export type EstimateStatus = 'pending' | 'approved' | 'rejected' | 'not_required'
+
+export type Estimate = {
+  id: string
+  version: number
+  amount_cents: number
+  currency: string
+  description: string
+  provider_name: string | null
+  status: EstimateStatus
+  approval_required: boolean
+  threshold_cents: number | null
+  // Whether this is the estimate the work order is currently held to.
+  current: boolean
+  submitted_by_name: string
+  submitted_at: string
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_reason: string | null
+}
+
+export type CostCheck = {
+  estimate_cents: number | null
+  over_estimate_cents: number | null
+  above_approval: boolean
+}
+
+export type ApprovalSummary = {
+  id: string
+  version: number
+  reference: string
+  title: string
+  work_order_status: WorkOrderStatus
+  property_name: string
+  location: string | null
+  amount_cents: number
+  currency: string
+  status: EstimateStatus
+  current: boolean
+  // Whether this person can decide on it right now.
+  decidable: boolean
+  submitted_at: string
+  decided_at: string | null
+}
+
+export type ApprovalVersion = {
+  id: string
+  version: number
+  amount_cents: number
+  currency: string
+  description: string
+  provider_name: string | null
+  status: EstimateStatus
+  approval_required: boolean
+  current: boolean
+  submitted_by_name: string
+  submitted_at: string
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_reason: string | null
+}
+
+export type Approval = ApprovalSummary & {
+  description: string
+  provider_name: string | null
+  submitted_by_name: string
+  decided_by_name: string | null
+  decision_reason: string | null
+  threshold_cents: number | null
+  scope: string
+  category: RequestCategory
+  priority: Urgency
+  due_date: string | null
+  street: string
+  city: string
+  region: string
+  postal_code: string
+  versions: ApprovalVersion[]
 }
 
 export type JobSummary = {

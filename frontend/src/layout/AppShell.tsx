@@ -3,10 +3,12 @@ import { Link, Outlet, useParams } from 'react-router'
 
 import { useAuth, useCurrentUser } from '../auth/auth-context.ts'
 import {
+  approvalsPath,
   canInvite,
   canSeeDirectory,
   findMembership,
   isContractor,
+  isPropertyOwner,
   isResident,
   myJobsPath,
   myRequestsPath,
@@ -47,7 +49,9 @@ export function AppShell() {
                 <Link to={requestsPath(membership.organization_id)}>Requests</Link>
                 <Link to={workOrdersPath(membership.organization_id)}>Work orders</Link>
                 <Link to={propertiesPath(membership.organization_id)}>Properties</Link>
-                <Link to={`${organizationPath(membership.organization_id)}/residents`}>Residents</Link>
+                <Link to={`${organizationPath(membership.organization_id)}/residents`}>
+                  Residents
+                </Link>
               </>
             )}
             {isResident(membership.roles) && (
@@ -58,6 +62,9 @@ export function AppShell() {
             )}
             {isContractor(membership.roles) && (
               <Link to={myJobsPath(membership.organization_id)}>My jobs</Link>
+            )}
+            {isPropertyOwner(membership.roles) && (
+              <Link to={approvalsPath(membership.organization_id)}>Approvals</Link>
             )}
             {canInvite(membership.roles) && (
               <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>

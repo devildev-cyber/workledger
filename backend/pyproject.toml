@@ -42,6 +42,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 "tests/test_work_orders.py" = ["F811"]
 "tests/test_dispatch.py" = ["F811"]
 "tests/test_verification.py" = ["F811"]
+"tests/test_estimates.py" = ["F811"]
 
 [tool.ruff.lint.isort]
 # The local alembic/ migrations folder would otherwise be mistaken for first-party code.

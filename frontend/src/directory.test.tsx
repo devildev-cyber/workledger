@@ -2,7 +2,15 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCsrfToken, setUnauthorizedHandler } from './api/client.ts'
-import type { ManagerChoice, Membership, MyHome, Property, Resident, Tenancy, Unit } from './api/types.ts'
+import type {
+  ManagerChoice,
+  Membership,
+  MyHome,
+  Property,
+  Resident,
+  Tenancy,
+  Unit,
+} from './api/types.ts'
 import { HARBOR, harborAdmin, mockApi, sessionFor } from './test/fetch-mock.ts'
 import { renderAt } from './test/render.tsx'
 
@@ -143,7 +151,9 @@ describe('properties list', () => {
 
     const form = screen.getByRole('form', { name: 'Add property' })
     fireEvent.change(within(form).getByLabelText('Name'), { target: { value: 'Maple Court' } })
-    fireEvent.change(within(form).getByLabelText('Approval threshold'), { target: { value: '1,250.50' } })
+    fireEvent.change(within(form).getByLabelText('Approval threshold'), {
+      target: { value: '1,250.50' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Add property' }))
 
     expect(await screen.findByRole('link', { name: 'Maple Court' })).toBeInTheDocument()
@@ -165,7 +175,9 @@ describe('properties list', () => {
     renderAt(`/organizations/${HARBOR.id}/properties`)
     const form = await screen.findByRole('form', { name: 'Add property' })
     fireEvent.change(within(form).getByLabelText('Name'), { target: { value: 'Maple Court' } })
-    fireEvent.change(within(form).getByLabelText('Approval threshold'), { target: { value: 'lots' } })
+    fireEvent.change(within(form).getByLabelText('Approval threshold'), {
+      target: { value: 'lots' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Add property' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/amount/)
@@ -187,7 +199,9 @@ describe('properties list', () => {
     fireEvent.change(within(form).getByLabelText('Name'), { target: { value: 'Maple Court' } })
     fireEvent.click(within(form).getByRole('button', { name: 'Add property' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('A property with this name already exists.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A property with this name already exists.',
+    )
   })
 
   it('gives managers a read-only list', async () => {
@@ -219,6 +233,14 @@ describe('property page', () => {
     { membership_id: 'm-mo', full_name: 'Mo Manager', email: 'mo@example.com', assigned: true },
     { membership_id: 'm-di', full_name: 'Di Manager', email: 'di@example.com', assigned: false },
   ]
+  const ownerChoices: ManagerChoice[] = [
+    {
+      membership_id: 'm-ol',
+      full_name: 'Olive Owner',
+      email: 'olive@example.com',
+      assigned: false,
+    },
+  ]
 
   it('shows details, units with their residents, and vacancies', async () => {
     mockApi({
@@ -226,6 +248,7 @@ describe('property page', () => {
       [`GET ${MAPLE}`]: { body: maple },
       [`GET ${MAPLE}/units`]: { body: units },
       [`GET ${MAPLE}/managers`]: { body: managerChoices },
+      [`GET ${MAPLE}/owners`]: { body: ownerChoices },
     })
 
     renderAt(`/organizations/${HARBOR.id}/properties/${MAPLE_ID}`)
@@ -243,6 +266,7 @@ describe('property page', () => {
       [`GET ${MAPLE}`]: { body: maple },
       [`GET ${MAPLE}/units`]: { body: units },
       [`GET ${MAPLE}/managers`]: { body: managerChoices },
+      [`GET ${MAPLE}/owners`]: { body: ownerChoices },
       [`POST ${MAPLE}/units`]: { status: 201, body: units[0] },
     })
 
@@ -265,6 +289,7 @@ describe('property page', () => {
       [`GET ${MAPLE}`]: { body: maple },
       [`GET ${MAPLE}/units`]: { body: units },
       [`GET ${MAPLE}/managers`]: { body: managerChoices },
+      [`GET ${MAPLE}/owners`]: { body: ownerChoices },
       [`PUT ${MAPLE}/managers`]: { body: managerChoices },
     })
 
@@ -276,6 +301,29 @@ describe('property page', () => {
     expect(await screen.findByText('Managers saved.')).toBeInTheDocument()
     const put = requests.find((request) => request.method === 'PUT')
     expect(put?.body).toEqual({ membership_ids: ['m-mo', 'm-di'] })
+  })
+
+  it('saves the chosen property owners', async () => {
+    const { requests } = mockApi({
+      'GET /api/auth/me': { body: sessionFor([harborAdmin]) },
+      [`GET ${MAPLE}`]: { body: maple },
+      [`GET ${MAPLE}/units`]: { body: units },
+      [`GET ${MAPLE}/managers`]: { body: managerChoices },
+      [`GET ${MAPLE}/owners`]: { body: ownerChoices },
+      [`PUT ${MAPLE}/owners`]: { body: ownerChoices },
+    })
+
+    renderAt(`/organizations/${HARBOR.id}/properties/${MAPLE_ID}`)
+    const olive = await screen.findByLabelText(/Olive Owner/)
+    expect(olive).not.toBeChecked()
+    fireEvent.click(olive)
+    fireEvent.click(screen.getByRole('button', { name: 'Save owners' }))
+
+    await waitFor(() => expect(requests.some((request) => request.method === 'PUT')).toBe(true))
+    expect(requests.find((request) => request.method === 'PUT')?.body).toEqual({
+      membership_ids: ['m-ol'],
+    })
+    expect(await screen.findByText('Owners saved.')).toBeInTheDocument()
   })
 
   it('shows managers the property without any editing tools', async () => {
@@ -313,6 +361,7 @@ describe('property page', () => {
       [`GET ${MAPLE}`]: { body: maple },
       [`GET ${MAPLE}/units`]: { body: units },
       [`GET ${MAPLE}/managers`]: { body: managerChoices },
+      [`GET ${MAPLE}/owners`]: { body: ownerChoices },
       [`PUT ${MAPLE}`]: { body: maple },
     })
 
@@ -320,10 +369,14 @@ describe('property page', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit details' }))
     const form = screen.getByRole('form', { name: 'Edit property' })
     expect(within(form).getByLabelText('Approval threshold')).toHaveValue('500.00')
-    fireEvent.change(within(form).getByLabelText('Approval threshold'), { target: { value: '750' } })
+    fireEvent.change(within(form).getByLabelText('Approval threshold'), {
+      target: { value: '750' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Save changes' }))
 
-    await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit property' })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('form', { name: 'Edit property' })).not.toBeInTheDocument(),
+    )
     expect(requests.find((request) => request.method === 'PUT')?.body).toMatchObject({
       name: 'Maple Court',
       approval_threshold_cents: 75000,
@@ -359,7 +412,9 @@ describe('residents page', () => {
 
     renderAt(`/organizations/${HARBOR.id}/residents`)
     const form = await screen.findByRole('form', { name: 'Add resident' })
-    fireEvent.change(within(form).getByLabelText('Full name'), { target: { value: 'Rae Resident' } })
+    fireEvent.change(within(form).getByLabelText('Full name'), {
+      target: { value: 'Rae Resident' },
+    })
     fireEvent.change(within(form).getByLabelText('Email'), { target: { value: 'rae@example.com' } })
     fireEvent.click(within(form).getByRole('button', { name: 'Add resident' }))
 
@@ -387,10 +442,14 @@ describe('residents page', () => {
     fireEvent.change(within(form).getByLabelText('Property'), { target: { value: MAPLE_ID } })
     await within(form).findByRole('option', { name: '2B' })
     fireEvent.change(within(form).getByLabelText('Unit'), { target: { value: 'u-2' } })
-    fireEvent.change(within(form).getByLabelText('Move-in date'), { target: { value: '2026-11-15' } })
+    fireEvent.change(within(form).getByLabelText('Move-in date'), {
+      target: { value: '2026-11-15' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Move in' }))
 
-    await waitFor(() => expect(screen.queryByRole('form', { name: 'Move in Sam Stayer' })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('form', { name: 'Move in Sam Stayer' })).not.toBeInTheDocument(),
+    )
     expect(requests.find((request) => request.method === 'POST')?.body).toEqual({
       unit_id: 'u-2',
       resident_id: 'r-sam',
@@ -412,7 +471,9 @@ describe('residents page', () => {
     renderAt(`/organizations/${HARBOR.id}/residents`)
     fireEvent.click(await screen.findByRole('button', { name: /Record move-out from/ }))
     const form = screen.getByRole('form', { name: /Move out from/ })
-    fireEvent.change(within(form).getByLabelText('Move-out date'), { target: { value: '2026-01-01' } })
+    fireEvent.change(within(form).getByLabelText('Move-out date'), {
+      target: { value: '2026-01-01' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Save move-out' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('cannot be before the move-in date')
@@ -458,7 +519,9 @@ describe('my home', () => {
 
     renderAt(`/organizations/${HARBOR.id}/my-home`)
 
-    expect(await screen.findByRole('heading', { name: 'Building A · 1A, Maple Court' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Building A · 1A, Maple Court' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('12 Maple Street, Springfield, IL 62701')).toBeInTheDocument()
     expect(screen.getByText(/Moved in/)).toBeInTheDocument()
   })

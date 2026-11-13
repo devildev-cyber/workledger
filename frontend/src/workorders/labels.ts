@@ -27,6 +27,9 @@ export const ENTRY_HEADLINES: Record<Exclude<EntryKind, 'status_changed'>, strin
   clarification: 'Question for the property team',
   verified: 'Work verified',
   sent_back: 'Sent back to the contractor',
+  estimate_submitted: 'Estimate recorded',
+  estimate_approved: 'Estimate approved',
+  estimate_rejected: 'Estimate rejected',
 }
 
 export const FIELD_LABELS: Record<string, string> = {

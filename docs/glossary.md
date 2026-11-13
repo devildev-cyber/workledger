@@ -105,13 +105,16 @@ What the work cost, recorded when it is verified as an exact amount in whole cen
 The verified work at a property, or at one unit, with its cost.
 
 **Estimate**
-A contractor's expected cost for a work order, recorded as an exact amount with a currency.
+The expected cost of a work order, recorded by a manager as an exact amount in the property's currency. Never edited: a revision replaces it and the earlier one stays on record.
 
 **Approval threshold**
-The spending limit set for a property. Estimates above it need an approval decision before work can proceed.
+The spending limit set for a property. An estimate above it (not at it) needs a property owner's decision before work can proceed. No threshold means no estimate needs approval.
 
 **Approval decision**
-A recorded approval or rejection of an estimate, with the decision-maker, timestamp, and reason.
+A property owner's recorded approval or rejection of an estimate, with the decision-maker, timestamp, and reason. Rejecting needs a reason.
+
+**Approval gate**
+The rule that holds a work order while its current estimate needs approval and has not been approved. It is checked on every status change, not only in the screen.
 
 **Verification**
 A manager's confirmation that completed work resolves the problem.

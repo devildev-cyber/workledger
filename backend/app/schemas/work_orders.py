@@ -14,6 +14,7 @@ from app.models import (
     WorkOrderStatus,
 )
 from app.schemas.directory import OptionalText, Text
+from app.schemas.estimates import CostCheckOut, EstimateOut
 
 Title = Annotated[Text, Field(min_length=3, max_length=200)]
 Scope = Annotated[Text, Field(min_length=1, max_length=5000)]
@@ -180,5 +181,15 @@ class WorkOrderOut(WorkOrderSummaryOut):
     resolution: str | None
     verified_by_name: str | None
     verified_at: datetime | None
+    # Estimates, newest first, and what they mean for the work (decision 0022).
+    estimates: list[EstimateOut]
+    approval_threshold_cents: int | None
+    # The property owners who would decide, by name. Empty means nobody can yet.
+    owner_names: list[str]
+    # Why work cannot go ahead yet, if it cannot.
+    approval_hold: str | None
+    can_record_estimate: bool
+    # What the work cost against what was estimated, once verified with a cost.
+    cost_check: CostCheckOut | None
     # What this person can move it to by hand right now.
     allowed_statuses: list[WorkOrderStatus]

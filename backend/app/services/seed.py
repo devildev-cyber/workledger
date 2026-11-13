@@ -29,6 +29,8 @@ from app.services import (
     assignments,
     directory,
     dispatch,
+    estimates,
+    ownerships,
     requests,
     residents,
     verification,
@@ -209,6 +211,14 @@ def seed_demo_organization(db: Session, *, password: str) -> SeedResult:
             db, created[name], membership_ids=[manager_membership.id], actor=admin
         )
 
+    # The demo property owner decides on Riverside Lofts and Oak Terrace Houses. Maple Court has
+    # no owner, so its warning is visible too.
+    owner_membership = ownerships.owner_memberships(db, organization.id)[0]
+    for name in ("Riverside Lofts", "Oak Terrace Houses"):
+        ownerships.set_property_owners(
+            db, created[name], membership_ids=[owner_membership.id], actor=admin
+        )
+
     people: list[Resident] = []
     for full_name, local_part, access in PEOPLE:
         index = len(people)
@@ -334,6 +344,12 @@ class WorkOrderPlan:
     ready_note: str | None = None
     resolution: str | None = None
     cost_cents: int | None = None
+    # An estimate recorded before the work starts: amount, who quoted it, and what it covers.
+    estimate_cents: int | None = None
+    estimate_from: str | None = None
+    estimate_note: str | None = None
+    # The property owner's answer to it, when they have given one.
+    approved_reason: str | None = None
 
 
 _DONE = [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.READY_FOR_REVIEW, WorkOrderStatus.COMPLETED]
@@ -345,6 +361,9 @@ WORK_ORDER_PLANS = {
         instruction="The resident works from home. Ring the bell and wait.",
         progress="Cartridge replaced. Checking it under pressure before I leave.",
         ready_note="Replaced the cartridge and ran the tap for ten minutes. No leaks.",
+        estimate_cents=14000,
+        estimate_from="Harbor Plumbing",
+        estimate_note="New cartridge and washers, one visit.",
     ),
     2: WorkOrderPlan(  # radiator, finished and verified
         _DONE,
@@ -354,8 +373,22 @@ WORK_ORDER_PLANS = {
         resolution="Valve replaced and the radiator bled. Heating works in every room.",
         cost_cents=18500,
     ),
-    5: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD], 14),  # dishwasher
-    7: WorkOrderPlan([], -2, contractor="pending"),  # no hot water, overdue, awaiting a reply
+    5: WorkOrderPlan(  # dishwasher, replacement approved by the owner, then paused for delivery
+        [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD],
+        14,
+        estimate_cents=132000,
+        estimate_from="Northwest Appliance",
+        estimate_note="Supply and fit a new dishwasher, remove the old one.",
+        approved_reason="Approved. The old unit is out of warranty.",
+    ),
+    7: WorkOrderPlan(  # no hot water, overdue, and the heater quote is waiting for the owner
+        [],
+        -2,
+        contractor="pending",
+        estimate_cents=145000,
+        estimate_from="Cascade Heating",
+        estimate_note="Replace the failed 50-gallon water heater and fit a new expansion tank.",
+    ),
     8: WorkOrderPlan(  # smoke detector, closed
         [*_DONE, WorkOrderStatus.CLOSED],
         -20,
@@ -381,6 +414,7 @@ def _add_requests(
     phone call."""
     admin = users[ADMIN_EMAIL]
     manager = users[MANAGER_EMAIL]
+    owner_membership_id = ownerships.owner_memberships(db, organization.id)[0].id
     today = utc_now().date()
     for index, (
         person_index, property_name, building_name, label, category, urgency, title, description,
@@ -434,6 +468,8 @@ def _add_requests(
             due_date=today + timedelta(days=plan.due_in_days),
         )
         job = None
+        property_ = db.get(Property, unit.property_id)
+        assert property_ is not None
         if plan.contractor:
             demo_contractor = next(
                 item
@@ -449,7 +485,26 @@ def _add_requests(
             )
             if plan.contractor == "accepted":
                 dispatch.accept(db, job, actor=users[CONTRACTOR_EMAIL])
-        property_ = db.get(Property, unit.property_id)
+        if plan.estimate_cents is not None:
+            estimate = estimates.submit(
+                db,
+                work_order,
+                actor=manager,
+                property_=property_,
+                amount_cents=plan.estimate_cents,
+                description=plan.estimate_note or "Estimate",
+                provider_name=plan.estimate_from,
+            )
+            if plan.approved_reason:
+                estimates.decide(
+                    db,
+                    estimate,
+                    work_order,
+                    actor=users[OWNER_EMAIL],
+                    membership_id=owner_membership_id,
+                    approve=True,
+                    reason=plan.approved_reason,
+                )
         for step in plan.path:
             if step == WorkOrderStatus.READY_FOR_REVIEW and plan.progress and job is not None:
                 dispatch.add_entry(

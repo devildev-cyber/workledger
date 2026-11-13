@@ -8,6 +8,7 @@ from app.models import EventType, Membership, MembershipRole, Organization, Role
 from app.services.activity import record_event
 from app.services.assignments import clear_assignments
 from app.services.organizations import NoRolesError
+from app.services.ownerships import clear_ownerships
 
 
 class LastAdministratorError(Exception):
@@ -80,6 +81,8 @@ def change_roles(
     if Role.MANAGER in current_roles and Role.MANAGER not in new_roles:
         # Access to properties ends with the role, not later.
         clear_assignments(session, membership.id)
+    if Role.PROPERTY_OWNER in current_roles and Role.PROPERTY_OWNER not in new_roles:
+        clear_ownerships(session, membership.id)
 
     # Only the differences are written, so roles that stay are not deleted and re-inserted.
     for assignment in list(membership.role_assignments):
@@ -111,6 +114,7 @@ def remove_member(session: Session, membership: Membership, *, actor: User) -> N
         _refuse_if_last_administrator(session, membership)
 
     clear_assignments(session, membership.id)
+    clear_ownerships(session, membership.id)
     membership_id, organization_id, user_id = (
         membership.id,
         membership.organization_id,

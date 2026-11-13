@@ -245,7 +245,7 @@ To explore a filled-in system, load the synthetic demo organization (a separate 
 python -m app.seed
 ```
 
-It creates "Harbor Demo Properties" with three properties, 24 units, 18 residents, 10 maintenance requests (five waiting for triage and five already turned into work orders in different statuses, three of them assigned to the demo contractor, one waiting for the manager to verify), plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
+It creates "Harbor Demo Properties" with three properties, 24 units, 18 residents, 10 maintenance requests (five waiting for triage and five already turned into work orders in different statuses, three of them assigned to the demo contractor, one waiting for the manager to verify, one held for the demo property owner's approval of a heater quote and one whose replacement the owner already approved), plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
 
 ## Tests and code quality
 

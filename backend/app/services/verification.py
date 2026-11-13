@@ -6,6 +6,7 @@ changed, so a refused review leaves the work order and its history as they were.
 """
 
 import re
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -18,7 +19,7 @@ from app.models import (
     WorkOrder,
     WorkOrderStatus,
 )
-from app.services import work_orders
+from app.services import estimates, work_orders
 from app.services.activity import record_event
 from app.services.work_orders import WorkOrderError
 
@@ -70,13 +71,22 @@ def verify(
     work_order.currency = code if final_cost_cents is not None else None
     work_order.verified_by_user_id = actor.id
     work_order.verified_at = now
+    # What the work cost against what was estimated and approved. Recorded, not enforced:
+    # the money is already spent, so refusing would only hide it.
+    check = estimates.cost_check(db, work_order, property_, final_cost_cents)
+    details: dict[str, Any] = {
+        "final_cost_cents": final_cost_cents,
+        "currency": work_order.currency,
+    }
+    if check is not None:
+        details["cost_check"] = check
     work_orders.add_entry(
         db,
         work_order,
         actor=actor,
         kind=EntryKind.VERIFIED,
         body=work_order.resolution,
-        details={"final_cost_cents": final_cost_cents, "currency": work_order.currency},
+        details=details,
     )
     record_event(
         db,
@@ -85,7 +95,7 @@ def verify(
         actor=actor,
         subject_type="work_order",
         subject_id=work_order.id,
-        after={"final_cost_cents": final_cost_cents, "currency": work_order.currency},
+        after=details,
     )
 
 

@@ -43,7 +43,13 @@ export function startingMembership(user: CurrentUser): Membership | undefined {
   return findMembership(user, recalledOrganization() ?? undefined) ?? user.memberships[0]
 }
 
-export const ALL_ROLES: Role[] = ['administrator', 'manager', 'resident', 'contractor', 'property_owner']
+export const ALL_ROLES: Role[] = [
+  'administrator',
+  'manager',
+  'resident',
+  'contractor',
+  'property_owner',
+]
 
 // Mirrors the server's rule (decision 0011), only to hide choices that would be refused.
 const INVITABLE: Partial<Record<Role, Role[]>> = {
@@ -93,4 +99,12 @@ export function myRequestsPath(organizationId: string): string {
 
 export function workOrdersPath(organizationId: string): string {
   return `${organizationPath(organizationId)}/work-orders`
+}
+
+export function isPropertyOwner(roles: Role[]): boolean {
+  return roles.includes('property_owner')
+}
+
+export function approvalsPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/my-approvals`
 }

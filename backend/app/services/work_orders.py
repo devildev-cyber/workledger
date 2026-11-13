@@ -11,12 +11,15 @@ from app.core.permissions import PropertyScope
 from app.models import (
     ADMINISTRATOR_ONLY_FROM,
     FINAL_STATUSES,
+    PROGRESS_STATUSES,
     REVIEW_MOVES,
     SYSTEM_STATUSES,
     TRANSITIONS,
     AssignmentEnd,
     Building,
     EntryKind,
+    Estimate,
+    EstimateStatus,
     EventType,
     MaintenanceRequest,
     Property,
@@ -62,6 +65,10 @@ class NotPermittedError(WorkOrderError):
     """The change is valid, but only for a more senior role."""
 
 
+class ApprovalRequiredError(WorkOrderError):
+    """The work order's spending needs a property owner's approval first (decision 0022)."""
+
+
 @dataclass(frozen=True)
 class WorkOrderRow:
     work_order: WorkOrder
@@ -80,6 +87,27 @@ def is_overdue(work_order: WorkOrder, today: date) -> bool:
         and work_order.due_date < today
         and WorkOrderStatus(work_order.status) not in FINAL_STATUSES
     )
+
+
+def approval_hold(db: Session, work_order: WorkOrder) -> str | None:
+    """Why work cannot go ahead yet, or None if it can.
+
+    Work is held while the current estimate is above the property's threshold and has not been
+    approved. Every status change passes through here, so no route can skip the owner. The
+    message is written to be safe for anyone to read, including the contractor: no amounts.
+    """
+    current = db.scalar(
+        select(Estimate).where(
+            Estimate.work_order_id == work_order.id, Estimate.superseded_at.is_(None)
+        )
+    )
+    if current is None or not current.approval_required:
+        return None
+    if current.status == EstimateStatus.APPROVED:
+        return None
+    if current.status == EstimateStatus.REJECTED:
+        return "The property owner did not approve this work. Ask the property team"
+    return "This work is waiting for the property owner's approval"
 
 
 def allowed_next_statuses(
@@ -302,6 +330,8 @@ def change_status(
         raise NotPermittedError("Only an administrator can reopen a finished work order")
     if new_status == WorkOrderStatus.CLOSED and not work_order.resolution:
         raise WorkOrderError("Verify the work before closing the work order")
+    if new_status in PROGRESS_STATUSES and (hold := approval_hold(db, work_order)):
+        raise ApprovalRequiredError(hold)
 
     if current in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED) and (
         new_status == WorkOrderStatus.IN_PROGRESS
@@ -337,6 +367,16 @@ def change_status(
         # A cancelled job disappears from the contractor's list.
         end_current_assignment(db, work_order, reason=AssignmentEnd.CANCELLED)
     sync_requests(db, work_order, actor=actor)
+
+
+def current_assignee_id(db: Session, work_order_id: uuid.UUID) -> uuid.UUID | None:
+    """The membership of the contractor now responsible, if there is one."""
+    return db.scalar(
+        select(WorkOrderAssignment.contractor_membership_id).where(
+            WorkOrderAssignment.work_order_id == work_order_id,
+            WorkOrderAssignment.ended_at.is_(None),
+        )
+    )
 
 
 def end_current_assignment(

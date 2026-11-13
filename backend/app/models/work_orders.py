@@ -45,11 +45,11 @@ S = WorkOrderStatus
 # Every move a work order may make. Anything not listed is refused. The statuses for dispatch
 # and approval are part of the table now so those phases add behaviour, not new rules.
 TRANSITIONS: dict[WorkOrderStatus, frozenset[WorkOrderStatus]] = {
-    S.OPEN: frozenset({S.ASSIGNED, S.IN_PROGRESS, S.ON_HOLD, S.CANCELLED}),
+    S.OPEN: frozenset({S.ASSIGNED, S.IN_PROGRESS, S.ON_HOLD, S.AWAITING_APPROVAL, S.CANCELLED}),
     S.ASSIGNED: frozenset({S.OPEN, S.IN_PROGRESS, S.ON_HOLD, S.AWAITING_APPROVAL, S.CANCELLED}),
     S.IN_PROGRESS: frozenset({S.ON_HOLD, S.AWAITING_APPROVAL, S.READY_FOR_REVIEW, S.CANCELLED}),
-    S.ON_HOLD: frozenset({S.OPEN, S.ASSIGNED, S.IN_PROGRESS, S.CANCELLED}),
-    S.AWAITING_APPROVAL: frozenset({S.IN_PROGRESS, S.ASSIGNED, S.CANCELLED}),
+    S.ON_HOLD: frozenset({S.OPEN, S.ASSIGNED, S.IN_PROGRESS, S.AWAITING_APPROVAL, S.CANCELLED}),
+    S.AWAITING_APPROVAL: frozenset({S.OPEN, S.IN_PROGRESS, S.ASSIGNED, S.ON_HOLD, S.CANCELLED}),
     S.READY_FOR_REVIEW: frozenset({S.IN_PROGRESS, S.COMPLETED}),
     S.COMPLETED: frozenset({S.CLOSED, S.IN_PROGRESS}),
     S.CLOSED: frozenset({S.IN_PROGRESS}),
@@ -58,6 +58,9 @@ TRANSITIONS: dict[WorkOrderStatus, frozenset[WorkOrderStatus]] = {
 # Leaving ready-for-review is a review: either the work is verified (with its resolution and
 # cost) or it is sent back (with a reason). It is never a plain status change.
 REVIEW_MOVES = frozenset({(S.READY_FOR_REVIEW, S.COMPLETED), (S.READY_FOR_REVIEW, S.IN_PROGRESS)})
+# Moving into these spends money or records that it was spent, so they wait for any approval
+# the current estimate needs (decision 0022).
+PROGRESS_STATUSES = frozenset({S.IN_PROGRESS, S.READY_FOR_REVIEW, S.COMPLETED})
 # Set by the feature that owns them (assignment in Phase 5, approvals in Phase 7), not by hand.
 SYSTEM_STATUSES = frozenset({S.ASSIGNED, S.AWAITING_APPROVAL})
 # Leaving these takes an administrator: a finished work order is reopened deliberately.
@@ -82,6 +85,10 @@ class EntryKind(enum.StrEnum):
     # The manager's review of work marked ready (decision 0021).
     VERIFIED = "verified"
     SENT_BACK = "sent_back"
+    # Estimates and the owner's decision on them (decision 0022).
+    ESTIMATE_SUBMITTED = "estimate_submitted"
+    ESTIMATE_APPROVED = "estimate_approved"
+    ESTIMATE_REJECTED = "estimate_rejected"
 
 
 class AssignmentResponse(enum.StrEnum):

@@ -107,6 +107,12 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     resolution: null,
     verified_by_name: null,
     verified_at: null,
+    estimates: [],
+    approval_threshold_cents: null,
+    owner_names: [],
+    approval_hold: null,
+    can_record_estimate: true,
+    cost_check: null,
     ...overrides,
   }
 }
@@ -200,7 +206,9 @@ describe('triage on a request', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Create work order' }))
     const form = screen.getByRole('form', { name: 'Create work order' })
     expect(within(form).getByLabelText('Title')).toHaveValue('Kitchen tap drips')
-    expect(within(form).getByLabelText('Scope of work')).toHaveValue('The cold tap has dripped all week.')
+    expect(within(form).getByLabelText('Scope of work')).toHaveValue(
+      'The cold tap has dripped all week.',
+    )
     expect(within(form).getByLabelText('Priority')).toHaveValue('soon')
     fireEvent.change(within(form).getByLabelText('Priority'), { target: { value: 'urgent' } })
     fireEvent.change(within(form).getByLabelText('Due date'), { target: { value: '2026-12-01' } })
@@ -304,7 +312,9 @@ describe('triage on a request', () => {
 
     renderAt(`${ORG_PATH}/requests/r-1`)
     fireEvent.click(await screen.findByRole('button', { name: 'Decline' }))
-    fireEvent.change(screen.getByLabelText('Reason for the resident'), { target: { value: 'No' + 'pe' } })
+    fireEvent.change(screen.getByLabelText('Reason for the resident'), {
+      target: { value: 'No' + 'pe' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Decline request' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('already been dealt with')
@@ -349,11 +359,18 @@ describe('work order list', () => {
   const properties = [{ id: 'p-1', name: 'Maple Court' }]
 
   it('shows open work orders with their due dates and overdue warnings', async () => {
-    const late = workOrder({ id: 'w-2', reference: 'WO-0002', title: 'Fix the gutter', overdue: true })
+    const late = workOrder({
+      id: 'w-2',
+      reference: 'WO-0002',
+      title: 'Fix the gutter',
+      overdue: true,
+    })
     mockApi({
       'GET /api/auth/me': { body: sessionFor([asManager]) },
       [`GET ${ORG}/properties`]: { body: properties },
-      [`GET ${ORG}/work-orders?open_only=true`]: { body: [summaryOf(workOrder()), summaryOf(late)] },
+      [`GET ${ORG}/work-orders?open_only=true`]: {
+        body: [summaryOf(workOrder()), summaryOf(late)],
+      },
     })
 
     renderAt(`${ORG_PATH}/work-orders`)
@@ -371,10 +388,13 @@ describe('work order list', () => {
       [`GET ${ORG}/work-orders?open_only=true`]: { body: [summaryOf(workOrder())] },
       [`GET ${ORG}/work-orders`]: { body: [] },
       [`GET ${ORG}/work-orders?status=on_hold`]: { body: [] },
-      [`GET ${ORG}/work-orders?status=on_hold&priority=urgent&property_id=p-1&older_than_days=7`]: { body: [] },
-      [`GET ${ORG}/work-orders?status=on_hold&priority=urgent&property_id=p-1&q=WO-0001&older_than_days=7`]: {
-        body: [summaryOf(workOrder())],
+      [`GET ${ORG}/work-orders?status=on_hold&priority=urgent&property_id=p-1&older_than_days=7`]: {
+        body: [],
       },
+      [`GET ${ORG}/work-orders?status=on_hold&priority=urgent&property_id=p-1&q=WO-0001&older_than_days=7`]:
+        {
+          body: [summaryOf(workOrder())],
+        },
     })
 
     renderAt(`${ORG_PATH}/work-orders`)
@@ -422,8 +442,12 @@ describe('work order list', () => {
     expect(await within(form).findByRole('alert')).toHaveTextContent('Choose a property.')
 
     fireEvent.change(within(form).getByLabelText('Property'), { target: { value: 'p-1' } })
-    fireEvent.change(within(form).getByLabelText('Title'), { target: { value: 'Repaint stairwell' } })
-    fireEvent.change(within(form).getByLabelText('Scope of work'), { target: { value: 'Two coats' } })
+    fireEvent.change(within(form).getByLabelText('Title'), {
+      target: { value: 'Repaint stairwell' },
+    })
+    fireEvent.change(within(form).getByLabelText('Scope of work'), {
+      target: { value: 'Two coats' },
+    })
     fireEvent.click(within(form).getByRole('button', { name: 'Create work order' }))
 
     expect(await screen.findByRole('heading', { name: 'Repaint stairwell' })).toBeInTheDocument()
@@ -470,12 +494,11 @@ describe('work order page', () => {
     renderAt(`${ORG_PATH}/work-orders/w-1`)
     const form = await screen.findByRole('form', { name: 'Change status' })
     const select = within(form).getByLabelText('New status')
-    expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'Choose a status',
-      'In progress',
-      'On hold',
-      'Cancelled',
-    ])
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose a status', 'In progress', 'On hold', 'Cancelled'])
 
     fireEvent.click(within(form).getByRole('button', { name: 'Update status' }))
     expect(await within(form).findByRole('alert')).toHaveTextContent('Choose the new status.')
@@ -508,7 +531,9 @@ describe('work order page', () => {
     fireEvent.change(within(form).getByLabelText('New status'), { target: { value: 'on_hold' } })
     fireEvent.click(within(form).getByRole('button', { name: 'Update status' }))
 
-    expect(await within(form).findByRole('alert')).toHaveTextContent('cannot move from open to completed')
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'cannot move from open to completed',
+    )
   })
 
   it('tells a manager a finished work order needs an administrator', async () => {
@@ -548,7 +573,9 @@ describe('work order page', () => {
     fireEvent.change(within(form).getByLabelText('Priority'), { target: { value: 'urgent' } })
     fireEvent.click(within(form).getByRole('button', { name: 'Save changes' }))
 
-    await waitFor(() => expect(screen.queryByRole('form', { name: 'Edit work order' })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('form', { name: 'Edit work order' })).not.toBeInTheDocument(),
+    )
     expect(requests.find((request) => request.method === 'PUT')?.body).toEqual({
       title: 'Replace kitchen tap',
       scope: 'Fit a new cartridge.',
@@ -578,15 +605,23 @@ describe('work order page', () => {
     fireEvent.change(within(form).getByLabelText('Note'), { target: { value: 'Visit Thursday' } })
     fireEvent.click(within(form).getByLabelText('Share with the residents of linked requests'))
     fireEvent.click(within(form).getByRole('button', { name: 'Add note' }))
-    await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2))
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2),
+    )
 
-    fireEvent.change(within(form).getByLabelText('Note'), { target: { value: 'Use the side gate' } })
+    fireEvent.change(within(form).getByLabelText('Note'), {
+      target: { value: 'Use the side gate' },
+    })
     fireEvent.click(within(form).getByLabelText('Internal note, staff only'))
     fireEvent.click(within(form).getByLabelText('Also share with the assigned contractor'))
     fireEvent.click(within(form).getByRole('button', { name: 'Add note' }))
-    await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(3))
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(3),
+    )
 
-    expect(requests.filter((request) => request.method === 'POST').map((request) => request.body)).toEqual([
+    expect(
+      requests.filter((request) => request.method === 'POST').map((request) => request.body),
+    ).toEqual([
       { body: 'Part ordered', visibility: 'internal', share_with_contractor: false },
       { body: 'Visit Thursday', visibility: 'resident', share_with_contractor: false },
       { body: 'Use the side gate', visibility: 'internal', share_with_contractor: true },
@@ -670,9 +705,22 @@ describe('work order page', () => {
 describe('grouping the queue', () => {
   const now = new Date('2026-11-12T12:00:00Z')
 
-  function request(id: string, urgency: StaffRequestSummary['urgency'], created: string, property = 'Maple Court') {
-    const { timeline, attachments, resident, description, location, access_notes, duplicate_of, ...rest } =
-      staffRequest({ id, urgency, created_at: created, property_name: property })
+  function request(
+    id: string,
+    urgency: StaffRequestSummary['urgency'],
+    created: string,
+    property = 'Maple Court',
+  ) {
+    const {
+      timeline,
+      attachments,
+      resident,
+      description,
+      location,
+      access_notes,
+      duplicate_of,
+      ...rest
+    } = staffRequest({ id, urgency, created_at: created, property_name: property })
     void [timeline, attachments, resident, description, location, access_notes, duplicate_of]
     return rest
   }

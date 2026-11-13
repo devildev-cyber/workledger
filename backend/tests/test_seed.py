@@ -169,7 +169,7 @@ def test_the_demo_contractor_has_jobs_in_different_states(
     assert {(job["status"], job["response"]) for job in jobs} == {
         ("ready_for_review", "accepted"),
         ("completed", "accepted"),
-        ("assigned", "pending"),
+        ("awaiting_approval", "pending"),
     }
     # Two work orders have no contractor, so the manager has something to assign.
     assert sum(1 for item in everything if item["assignee_id"] is None) == 2
@@ -199,3 +199,35 @@ def test_the_demo_has_work_to_verify_and_a_history_with_costs(
         ("completed", 18500),
     ]
     assert {item["currency"] for item in history} == {"USD"}
+
+
+def test_the_demo_owner_has_one_estimate_to_decide_and_one_already_decided(
+    client_factory: ClientFactory, seeded: Organization
+) -> None:
+    base = f"/api/organizations/{seeded.id}"
+    owner = sign_in_as(client_factory, "owner@demo.example")
+    admin = sign_in_as(client_factory, ADMIN_EMAIL)
+
+    approvals = owner.get(f"{base}/my-approvals").json()
+    everything = admin.get(f"{base}/work-orders").json()
+
+    by_title = {item["title"]: item for item in approvals}
+    assert set(by_title) == {"No hot water", "Dishwasher leaking"}
+    waiting = by_title["No hot water"]
+    assert (waiting["status"], waiting["amount_cents"], waiting["decidable"]) == (
+        "pending",
+        145000,
+        True,
+    )
+    decided = by_title["Dishwasher leaking"]
+    assert (decided["status"], decided["amount_cents"], decided["decidable"]) == (
+        "approved",
+        132000,
+        False,
+    )
+    # The held work order is the one the owner is asked about; the quote under the threshold is
+    # not theirs to decide, so it is not listed.
+    assert next(item for item in everything if item["title"] == "No hot water")["status"] == (
+        "awaiting_approval"
+    )
+    assert "Kitchen faucet drips" not in by_title

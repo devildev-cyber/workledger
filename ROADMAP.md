@@ -34,7 +34,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | 🟨 |
 | 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | 🟨 |
 | ★ | **Milestone A: core repair loop** | One repair flows from report to closure | 0–6 | ⬜ |
-| 7 | Estimates and owner approvals | Spending above a threshold requires a recorded decision | 6 | ⬜ |
+| 7 | Estimates and owner approvals | Spending above a threshold requires a recorded decision | 6 | ✅ |
 | 8 | Notifications and activity | Participants learn about actionable events without asking | 6 | ⬜ |
 | 9 | Reporting and export | Managers understand workload, patterns, and spend | 6, 7 | ⬜ |
 | ★ | **Milestone B: feature-complete MVP** | All capabilities in the product documents exist | 0–9 | ⬜ |
@@ -234,15 +234,18 @@ The full maintenance lifecycle works end to end with real permissions. Review th
 - An owner approval workspace showing the estimate, property, work requested, and decision history, without full access to internal management records.
 
 **Exit criteria**
-- [ ] Tests confirm that no endpoint or direct status change bypasses a required approval.
-- [ ] Every decision is recorded with actor, timestamp, amount, and reason.
-- [ ] Owners see only what their approval authority requires.
+- [x] Tests confirm that no endpoint or direct status change bypasses a required approval.
+- [x] Every decision is recorded with actor, timestamp, amount, and reason.
+- [x] Owners see only what their approval authority requires.
 
-**Decisions to make**
-- Who is authorized to approve: the property owner, a manager, or either depending on the amount.
-- What happens when an estimate is revised after approval, or when the actual cost exceeds the approved amount.
-- Whether a work order can have several competing estimates.
-- What happens to a work order after a rejection.
+**Decisions made**
+- Only the property owner of that property decides, and only above the threshold. Managers and administrators record estimates but never decide, and nobody decides on their own estimate ([decision 0022](docs/decisions/0022-estimates-and-owner-approvals.md)).
+- A revised estimate replaces the current one and goes through the gate again. There is one current estimate per work order, and every version stays on record ([decision 0022](docs/decisions/0022-estimates-and-owner-approvals.md)).
+- A final cost above the estimate is recorded and shown, not refused ([decision 0022](docs/decisions/0022-estimates-and-owner-approvals.md)).
+- A rejection puts the work order on hold until a manager records a revised estimate or cancels it ([decision 0022](docs/decisions/0022-estimates-and-owner-approvals.md)).
+
+**Deferred**
+- Contractors submitting their own quotes. Managers record estimates for now.
 
 ---
 

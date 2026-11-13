@@ -6,7 +6,8 @@ from sqlalchemy import select
 
 from app.api.access import OrganizationContext, require_roles
 from app.api.deps import DbSession
-from app.models import Role, Urgency, User, WorkOrderStatus
+from app.models import PROGRESS_STATUSES, Role, Urgency, User, WorkOrderStatus
+from app.schemas.estimates import CostCheckOut, EstimateIn, EstimateOut
 from app.schemas.work_orders import (
     AssignmentOut,
     LinkedRequestOut,
@@ -25,6 +26,8 @@ from app.services import (
     attachments,
     directory,
     dispatch,
+    estimates,
+    ownerships,
     requests,
     residents,
     verification,
@@ -102,6 +105,11 @@ def build_work_order(
         if row.work_order.verified_by_user_id
         else None
     )
+    hold = work_orders.approval_hold(db, row.work_order)
+    allowed = work_orders.allowed_next_statuses(
+        current, is_administrator=_is_administrator(context)
+    )
+    check = estimates.cost_check(db, row.work_order, row.property, row.work_order.final_cost_cents)
     return WorkOrderOut(
         **_summary(row, len(linked), assignee).model_dump(),
         scope=row.work_order.scope,
@@ -148,9 +156,37 @@ def build_work_order(
         resolution=row.work_order.resolution,
         verified_by_name=verifier.full_name if verifier else None,
         verified_at=row.work_order.verified_at,
-        allowed_statuses=work_orders.allowed_next_statuses(
-            current, is_administrator=_is_administrator(context)
-        ),
+        estimates=[estimate_out(record) for record in estimates.records_for(db, work_order_id)],
+        approval_threshold_cents=row.property.approval_threshold_cents,
+        owner_names=ownerships.owner_names(db, row.property.id),
+        approval_hold=hold,
+        can_record_estimate=current in estimates.ESTIMATABLE,
+        cost_check=CostCheckOut(**check) if check else None,
+        # Work that is held for approval cannot be moved on by hand either.
+        allowed_statuses=[
+            item for item in allowed if hold is None or item not in PROGRESS_STATUSES
+        ],
+    )
+
+
+def estimate_out(record: estimates.EstimateRecord) -> EstimateOut:
+    item = record.estimate
+    return EstimateOut(
+        id=item.id,
+        version=item.version,
+        amount_cents=item.amount_cents,
+        currency=item.currency,
+        description=item.description,
+        provider_name=item.provider_name,
+        status=item.status,
+        approval_required=item.approval_required,
+        threshold_cents=item.threshold_cents,
+        current=item.superseded_at is None,
+        submitted_by_name=record.submitted_by_name,
+        submitted_at=item.created_at,
+        decided_by_name=record.decided_by_name,
+        decided_at=item.decided_at,
+        decision_reason=item.decision_reason,
     )
 
 
@@ -318,6 +354,27 @@ def send_back_work_order(
     row = _get(db, context, work_order_id)
     try:
         verification.send_back(db, row.work_order, actor=context.user, reason=body.reason)
+    except WorkOrderError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return build_work_order(db, context, work_order_id)
+
+
+@router.post("/work-orders/{work_order_id}/estimates", status_code=status.HTTP_201_CREATED)
+def record_estimate(
+    work_order_id: uuid.UUID, body: EstimateIn, context: StaffContext, db: DbSession
+) -> WorkOrderOut:
+    row = _get(db, context, work_order_id)
+    try:
+        estimates.submit(
+            db,
+            row.work_order,
+            actor=context.user,
+            property_=row.property,
+            amount_cents=body.amount_cents,
+            description=body.description,
+            provider_name=body.provider_name,
+        )
     except WorkOrderError as error:
         raise _refuse(error) from error
     db.commit()

@@ -6,7 +6,9 @@ import { ENTRY_HEADLINES, FIELD_LABELS, WORK_ORDER_STATUS_LABELS } from './label
 
 function headline(entry: WorkOrderEntry): string {
   if (entry.kind === 'status_changed') {
-    return entry.status ? `Status changed to ${WORK_ORDER_STATUS_LABELS[entry.status]}` : 'Status changed'
+    return entry.status
+      ? `Status changed to ${WORK_ORDER_STATUS_LABELS[entry.status]}`
+      : 'Status changed'
   }
   return ENTRY_HEADLINES[entry.kind]
 }
@@ -44,6 +46,20 @@ export function History({ entries }: { entries: WorkOrderEntry[] }) {
                 : 'not recorded'}
             </p>
           )}
+          {(entry.kind === 'estimate_submitted' ||
+            entry.kind === 'estimate_approved' ||
+            entry.kind === 'estimate_rejected') &&
+            entry.details &&
+            typeof entry.details.amount_cents === 'number' &&
+            typeof entry.details.currency === 'string' && (
+              <p className="text-sm text-slate-800">
+                Estimate {String(entry.details.version)}:{' '}
+                {formatMoney(entry.details.amount_cents, entry.details.currency)}
+                {entry.kind === 'estimate_submitted' && entry.details.approval_required
+                  ? ' (needs approval)'
+                  : ''}
+              </p>
+            )}
           {entry.kind === 'edited' && entry.details && (
             <ul className="text-sm text-slate-800">
               {Object.entries(entry.details).map(([field, change]) => {

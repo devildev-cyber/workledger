@@ -14,6 +14,7 @@ import {
 } from '../organizations/organizations.ts'
 import { CATEGORY_LABELS, URGENCY_SHORT } from '../requests/labels.ts'
 import { StatusBadge } from '../requests/StatusBadge.tsx'
+import { EstimatePanel } from '../estimates/EstimatePanel.tsx'
 import { AssignmentPanel } from '../dispatch/AssignmentPanel.tsx'
 import { FileList } from '../dispatch/FileList.tsx'
 import { SHARE_WITH_CONTRACTOR } from '../dispatch/labels.ts'
@@ -85,11 +86,7 @@ function WorkOrderDetail({
             Details
           </h2>
           {!editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-sm underline"
-            >
+            <button type="button" onClick={() => setEditing(true)} className="text-sm underline">
               Edit details
             </button>
           )}
@@ -147,6 +144,13 @@ function WorkOrderDetail({
             onChanged={reload}
           />
         )}
+      </section>
+
+      <section aria-labelledby="estimates-heading" className="space-y-3">
+        <h2 id="estimates-heading" className="text-xl font-semibold">
+          Estimates
+        </h2>
+        <EstimatePanel url={url} workOrder={workOrder} onChanged={reload} />
       </section>
 
       {workOrder.resolution !== null && (

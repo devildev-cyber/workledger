@@ -24,7 +24,8 @@ class Property(TimestampMixin, Base):
     city: Mapped[str] = mapped_column(String(120), default="")
     region: Mapped[str] = mapped_column(String(120), default="")
     postal_code: Mapped[str] = mapped_column(String(32), default="")
-    # Stored now, enforced when estimates and approvals arrive (Phase 7).
+    # Estimates above the threshold need a property owner's decision (decision 0022). No
+    # threshold means no estimate needs approval.
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     approval_threshold_cents: Mapped[int | None] = mapped_column(Integer)
 
@@ -87,6 +88,18 @@ class PropertyAssignment(TimestampMixin, Base):
     """A manager acts on this property (decision 0008)."""
 
     __tablename__ = "property_assignments"
+    __table_args__ = (UniqueConstraint("property_id", "membership_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
+    property_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("properties.id"), index=True)
+    membership_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memberships.id"), index=True)
+
+
+class PropertyOwnership(TimestampMixin, Base):
+    """A property owner decides on spending at this property (decision 0022)."""
+
+    __tablename__ = "property_ownerships"
     __table_args__ = (UniqueConstraint("property_id", "membership_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

@@ -93,12 +93,20 @@ def test_the_manager_verifies_the_work_and_records_what_it_cost(
 
     verified = [entry for entry in body["history"] if entry["kind"] == "verified"]
     assert [(e["body"], e["author_name"]) for e in verified] == [(RESOLUTION, MANAGER)]
-    assert verified[0]["details"] == {"final_cost_cents": 18550, "currency": "USD"}
+    assert verified[0]["details"] == {
+        "final_cost_cents": 18550,
+        "currency": "USD",
+        "cost_check": {
+            "estimate_cents": None,
+            "over_estimate_cents": None,
+            "above_approval": False,
+        },
+    }
     statuses = [e["status"] for e in body["history"] if e["kind"] == "status_changed"]
     assert statuses[-2:] == ["ready_for_review", "completed"]
     recorded = events(db_session, EventType.WORK_ORDER_VERIFIED)
     assert len(recorded) == 1
-    assert recorded[0].after == {"final_cost_cents": 18550, "currency": "USD"}
+    assert recorded[0].after == verified[0]["details"]
 
 
 def test_the_cost_is_optional_and_the_currency_can_differ_from_the_property(

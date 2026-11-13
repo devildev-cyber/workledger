@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api import (
+    approvals,
     auth,
     directory,
     dispatch,
@@ -38,6 +39,7 @@ def create_app(
     app.include_router(work_orders.router, prefix="/api")
     app.include_router(dispatch.router, prefix="/api")
     app.include_router(jobs.router, prefix="/api")
+    app.include_router(approvals.router, prefix="/api")
     app.include_router(members.router, prefix="/api")
     app.include_router(invitations.organization_router, prefix="/api")
     app.include_router(invitations.public_router, prefix="/api")

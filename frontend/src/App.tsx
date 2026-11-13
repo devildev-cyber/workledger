@@ -1,5 +1,7 @@
 import { Route, Routes } from 'react-router'
 
+import { ApprovalPage } from './pages/ApprovalPage.tsx'
+import { ApprovalsPage } from './pages/ApprovalsPage.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { RequireAuth } from './auth/RequireAuth.tsx'
 import { AppShell } from './layout/AppShell.tsx'
@@ -57,7 +59,15 @@ function App() {
               element={<WorkOrderPage />}
             />
             <Route path="organizations/:organizationId/my-jobs" element={<MyJobsPage />} />
-            <Route path="organizations/:organizationId/my-jobs/:workOrderId" element={<JobPage />} />
+            <Route
+              path="organizations/:organizationId/my-jobs/:workOrderId"
+              element={<JobPage />}
+            />
+            <Route path="organizations/:organizationId/my-approvals" element={<ApprovalsPage />} />
+            <Route
+              path="organizations/:organizationId/my-approvals/:estimateId"
+              element={<ApprovalPage />}
+            />
             <Route path="organizations/:organizationId/my-requests" element={<MyRequestsPage />} />
             <Route
               path="organizations/:organizationId/my-requests/new"

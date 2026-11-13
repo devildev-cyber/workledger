@@ -76,6 +76,12 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     resolution: null,
     verified_by_name: null,
     verified_at: null,
+    estimates: [],
+    approval_threshold_cents: null,
+    owner_names: [],
+    approval_hold: null,
+    can_record_estimate: true,
+    cost_check: null,
     ...overrides,
   }
 }
@@ -207,18 +213,18 @@ describe('navigation and access', () => {
     expect(screen.queryByRole('link', { name: 'Requests' })).not.toBeInTheDocument()
   })
 
-  it.each([['manager', asManager], ['resident', asResident]])(
-    'keeps a %s out of the job workspace',
-    async (_name, membership) => {
-      const { requests } = mockApi({ 'GET /api/auth/me': { body: sessionFor([membership]) } })
+  it.each([
+    ['manager', asManager],
+    ['resident', asResident],
+  ])('keeps a %s out of the job workspace', async (_name, membership) => {
+    const { requests } = mockApi({ 'GET /api/auth/me': { body: sessionFor([membership]) } })
 
-      renderAt(`${ORG_PATH}/my-jobs/w-1`)
+    renderAt(`${ORG_PATH}/my-jobs/w-1`)
 
-      expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'My jobs' })).not.toBeInTheDocument()
-      expect(requests).toHaveLength(1)
-    },
-  )
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'My jobs' })).not.toBeInTheDocument()
+    expect(requests).toHaveLength(1)
+  })
 
   it.each(['/work-orders', '/work-orders/w-1', '/requests'])(
     'keeps a contractor away from %s',
@@ -249,16 +255,22 @@ describe('assigning a work order', () => {
     renderAt(`${ORG_PATH}/work-orders/w-1`)
     const form = await screen.findByRole('form', { name: 'Assign a contractor' })
     expect(screen.getByText('No contractor is assigned.')).toBeInTheDocument()
-    const choices = within(form).getAllByRole('option').map((option) => option.textContent)
+    const choices = within(form)
+      .getAllByRole('option')
+      .map((option) => option.textContent)
     await waitFor(() =>
       expect(
-        within(form).getAllByRole('option').map((option) => option.textContent),
+        within(form)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
       ).toContain('Casey Carpenter (2 open jobs)'),
     )
     expect(choices.length).toBeGreaterThan(0)
-    expect(within(form).getAllByRole('option').map((option) => option.textContent)).toContain(
-      'Pat Plumber (1 open job)',
-    )
+    expect(
+      within(form)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toContain('Pat Plumber (1 open job)')
 
     fireEvent.click(within(form).getByRole('button', { name: 'Assign' }))
     expect(await within(form).findByRole('alert')).toHaveTextContent('Choose a contractor.')
@@ -354,7 +366,9 @@ describe('assigning a work order', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Remove contractor' }))
 
     await waitFor(() =>
-      expect(requests.some((request) => request.path === `${ORG}/work-orders/w-1/unassign`)).toBe(true),
+      expect(requests.some((request) => request.path === `${ORG}/work-orders/w-1/unassign`)).toBe(
+        true,
+      ),
     )
   })
 
@@ -464,9 +478,13 @@ describe('assigning a work order', () => {
     })
     fireEvent.click(within(form).getByLabelText('Share with the contractor'))
     fireEvent.click(within(form).getByRole('button', { name: 'Upload' }))
-    await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2))
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2),
+    )
 
-    expect(requests.filter((request) => request.method === 'POST').map((request) => request.path)).toEqual([
+    expect(
+      requests.filter((request) => request.method === 'POST').map((request) => request.path),
+    ).toEqual([
       `${ORG}/work-orders/w-1/attachments?filename=invoice.pdf&contractor_visible=false`,
       `${ORG}/work-orders/w-1/attachments?filename=plan.png&contractor_visible=true`,
     ])
@@ -570,7 +588,13 @@ describe('my jobs', () => {
         body: [
           summaryOfJob(job()),
           summaryOfJob(
-            accepted({ id: 'w-2', reference: 'WO-0002', title: 'Fix the gutter', status: 'in_progress', overdue: true }),
+            accepted({
+              id: 'w-2',
+              reference: 'WO-0002',
+              title: 'Fix the gutter',
+              status: 'in_progress',
+              overdue: true,
+            }),
           ),
         ],
       },
@@ -656,7 +680,9 @@ describe('a job', () => {
     const form = screen.getByRole('form', { name: 'Decline the job' })
 
     fireEvent.click(within(form).getByRole('button', { name: 'Decline job' }))
-    expect(await within(form).findByRole('alert')).toHaveTextContent('Say why you cannot take this job.')
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Say why you cannot take this job.',
+    )
     expect(requests.some((request) => request.method === 'POST')).toBe(false)
 
     fireEvent.change(within(form).getByLabelText('Why can you not take it?'), {
@@ -676,7 +702,10 @@ describe('a job', () => {
       'GET /api/auth/me': { body: sessionFor([asContractor]) },
       [`GET ${ORG}/my-jobs/w-1`]: () => ({ body: current }),
       [`POST ${ORG}/my-jobs/w-1/status`]: () => {
-        current = accepted({ status: 'in_progress', allowed_statuses: ['on_hold', 'ready_for_review'] })
+        current = accepted({
+          status: 'in_progress',
+          allowed_statuses: ['on_hold', 'ready_for_review'],
+        })
         return { body: current }
       },
     })
@@ -705,7 +734,10 @@ describe('a job', () => {
     const { requests } = mockApi({
       'GET /api/auth/me': { body: sessionFor([asContractor]) },
       [`GET ${ORG}/my-jobs/w-1`]: {
-        body: accepted({ status: 'in_progress', allowed_statuses: ['on_hold', 'ready_for_review'] }),
+        body: accepted({
+          status: 'in_progress',
+          allowed_statuses: ['on_hold', 'ready_for_review'],
+        }),
       },
       [`POST ${ORG}/my-jobs/w-1/status`]: { body: accepted({ status: 'in_progress' }) },
     })
@@ -722,7 +754,10 @@ describe('a job', () => {
     fireEvent.click(within(form).getByRole('button', { name: confirm }))
 
     await waitFor(() => expect(requests.some((request) => request.method === 'POST')).toBe(true))
-    expect(requests.find((request) => request.method === 'POST')?.body).toEqual({ status, note: text })
+    expect(requests.find((request) => request.method === 'POST')?.body).toEqual({
+      status,
+      note: text,
+    })
   })
 
   it('resumes a job that is on hold', async () => {
@@ -741,7 +776,9 @@ describe('a job', () => {
   it('sends a progress update, a note, or a question', async () => {
     const { requests } = mockApi({
       'GET /api/auth/me': { body: sessionFor([asContractor]) },
-      [`GET ${ORG}/my-jobs/w-1`]: { body: accepted({ status: 'in_progress', allowed_statuses: [] }) },
+      [`GET ${ORG}/my-jobs/w-1`]: {
+        body: accepted({ status: 'in_progress', allowed_statuses: [] }),
+      },
       [`POST ${ORG}/my-jobs/w-1/entries`]: { status: 201, body: accepted() },
     })
 
@@ -762,9 +799,13 @@ describe('a job', () => {
       target: { value: 'Is the cabinet in scope?' },
     })
     fireEvent.click(within(form).getByRole('button', { name: 'Send update' }))
-    await waitFor(() => expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2))
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(2),
+    )
 
-    expect(requests.filter((request) => request.method === 'POST').map((request) => request.body)).toEqual([
+    expect(
+      requests.filter((request) => request.method === 'POST').map((request) => request.body),
+    ).toEqual([
       { body: 'Half done', kind: 'progress' },
       { body: 'Is the cabinet in scope?', kind: 'clarification' },
     ])

@@ -23,6 +23,7 @@ class EventType(enum.StrEnum):
     PROPERTY_CREATED = "property.created"
     PROPERTY_UPDATED = "property.updated"
     PROPERTY_MANAGERS_CHANGED = "property.managers_changed"
+    PROPERTY_OWNERS_CHANGED = "property.owners_changed"
     BUILDING_CREATED = "building.created"
     BUILDING_UPDATED = "building.updated"
     UNIT_CREATED = "unit.created"
@@ -46,6 +47,8 @@ class EventType(enum.StrEnum):
     WORK_ORDER_ATTACHMENT_ADDED = "work_order.attachment_added"
     WORK_ORDER_VERIFIED = "work_order.verified"
     WORK_ORDER_SENT_BACK = "work_order.sent_back"
+    ESTIMATE_SUBMITTED = "estimate.submitted"
+    ESTIMATE_DECIDED = "estimate.decided"
 
 
 class ActivityEventImmutableError(Exception):

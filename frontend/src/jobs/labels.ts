@@ -42,6 +42,9 @@ export const TIMELINE_HEADLINES: Record<EntryKind, string> = {
   clarification: 'Question for the property team',
   verified: 'Work verified',
   sent_back: 'Sent back for more work',
+  estimate_submitted: 'Estimate recorded',
+  estimate_approved: 'Estimate approved',
+  estimate_rejected: 'Estimate rejected',
 }
 
 export type JobGroups = {

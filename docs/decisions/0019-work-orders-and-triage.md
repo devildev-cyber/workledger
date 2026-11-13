@@ -37,17 +37,17 @@ Statuses: open, assigned, in progress, on hold, awaiting approval, ready for rev
 
 | From | To |
 | --- | --- |
-| open | assigned, in progress, on hold, cancelled |
+| open | assigned, in progress, on hold, awaiting approval, cancelled |
 | assigned | open, in progress, on hold, awaiting approval, cancelled |
 | in progress | on hold, awaiting approval, ready for review, cancelled |
-| on hold | open, assigned, in progress, cancelled |
-| awaiting approval | in progress, assigned, cancelled |
+| on hold | open, assigned, in progress, awaiting approval, cancelled |
+| awaiting approval | open, assigned, in progress, on hold, cancelled |
 | ready for review | in progress, completed |
 | completed | closed, in progress |
 | closed | in progress |
 | cancelled | open |
 
-- `assigned` is set by dispatch ([decision 0020](0020-dispatch-and-contractor-access.md)) and `awaiting approval` belongs to Phase 7. Neither can be set by hand.
+- `assigned` is set by dispatch ([decision 0020](0020-dispatch-and-contractor-access.md)) and `awaiting approval` is set by estimates ([decision 0022](0022-estimates-and-owner-approvals.md)). Neither can be set by hand, and moving into in progress, ready for review or completed waits for any approval the current estimate needs.
 - Leaving `closed` or `cancelled` needs an administrator (`403` for a manager). Everything else is open to managers at the property.
 - Leaving `ready for review` is a review, not a plain status change ([decision 0021](0021-verification-and-closure.md)).
 - A move the table does not allow is refused with `409` and an explanation. Every check runs before anything is changed, so a refused move leaves the work order, its history, its requests, and the activity log exactly as they were.
@@ -62,7 +62,7 @@ Statuses: open, assigned, in progress, on hold, awaiting approval, ready for rev
 
 **Access**
 
-Administrators and managers only, and managers only at properties assigned to them. A work order at another property looks missing (`404`). Contractors see only their own assigned jobs, through a separate workspace ([decision 0020](0020-dispatch-and-contractor-access.md)). Owners have no access yet (Phase 7).
+Administrators and managers only, and managers only at properties assigned to them. A work order at another property looks missing (`404`). Contractors see only their own assigned jobs, through a separate workspace ([decision 0020](0020-dispatch-and-contractor-access.md)). Property owners reach work only through the approvals workspace ([decision 0022](0022-estimates-and-owner-approvals.md)).
 
 ## Consequences
 

@@ -55,6 +55,12 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     resolution: null,
     verified_by_name: null,
     verified_at: null,
+    estimates: [],
+    approval_threshold_cents: null,
+    owner_names: [],
+    approval_hold: null,
+    can_record_estimate: true,
+    cost_check: null,
     ...overrides,
   }
 }

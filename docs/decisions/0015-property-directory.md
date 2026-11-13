@@ -14,7 +14,7 @@ Every later phase refers to a place: a request is reported against a unit, a man
 - **Who may write:** only administrators create or change properties, buildings, and units.
 - **Who may read:** administrators see every property. Managers see only the properties assigned to them ([0008](0008-property-scoped-managers.md)). A property outside that set looks like a missing one (`404`).
 - **Manager assignment:** an administrator replaces the set of managers on a property as a whole. Only members who hold the manager role can be assigned. Removing the manager role from a member, or removing the member, clears their assignments.
-- **Settings:** currency (three letters, default `USD`) and approval threshold (whole cents, optional) are stored on the property now. Nothing enforces them until Phase 7.
+- **Settings:** currency (three letters, default `USD`) and approval threshold (whole cents, optional) are stored on the property now. The threshold is enforced when estimates are recorded ([decision 0022](0022-estimates-and-owner-approvals.md)).
 - **Record:** creating and changing these records writes activity events. Changes list the fields that changed with their before and after values.
 - **Not included:** properties, buildings, and units cannot be deleted or archived yet. Records that later phases attach to them make deletion a decision of its own.
 
