@@ -128,9 +128,29 @@ def test_the_demo_has_requests_in_several_statuses(
     manager = sign_in_as(client_factory, MANAGER_EMAIL).get(f"{base}/requests").json()
     resident = sign_in_as(client_factory, RESIDENT_EMAIL).get(f"{base}/my-requests").json()
 
-    assert len(admin) == 9
+    assert len(admin) == 10
     assert {item["status"] for item in admin} >= {"submitted", "in_review", "in_progress", "closed"}
     # The manager looks after two of the three properties, so Oak Terrace is out of reach.
     assert 0 < len(manager) < len(admin)
     assert all(item["property_name"] != "Oak Terrace Houses" for item in manager)
     assert len(resident) == 3
+
+
+def test_the_demo_has_a_queue_to_triage_and_work_orders_to_follow(
+    client_factory: ClientFactory, seeded: Organization
+) -> None:
+    base = f"/api/organizations/{seeded.id}"
+    manager = sign_in_as(client_factory, MANAGER_EMAIL)
+
+    queue = manager.get(f"{base}/requests", params={"needs_triage": "true"}).json()
+    work_orders = manager.get(f"{base}/work-orders").json()
+
+    # Five reports wait for a decision, including two about the same mice.
+    assert len(queue) == 5
+    assert {item["urgency"] for item in queue} >= {"routine", "soon", "urgent"}
+    # Five were turned into work orders. The manager does not look after Oak Terrace.
+    everything = sign_in_as(client_factory, ADMIN_EMAIL).get(f"{base}/work-orders").json()
+    assert len(everything) == 5
+    assert {item["status"] for item in work_orders} == {"in_progress", "completed", "on_hold"}
+    # The emergency at Oak Terrace is past its due date.
+    assert [item["title"] for item in everything if item["overdue"]] == ["No hot water"]

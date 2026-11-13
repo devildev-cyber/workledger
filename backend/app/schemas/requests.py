@@ -4,7 +4,14 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models import RequestCategory, RequestStatus, UpdateKind, Urgency, Visibility
+from app.models import (
+    RequestCategory,
+    RequestStatus,
+    UpdateKind,
+    Urgency,
+    Visibility,
+    WorkOrderStatus,
+)
 from app.schemas.directory import OptionalText, Text
 
 # --- Input ------------------------------------------------------------------------------
@@ -16,8 +23,8 @@ class RequestIn(BaseModel):
     urgency: Urgency
     title: Annotated[Text, Field(min_length=3, max_length=200)]
     description: Annotated[Text, Field(min_length=1, max_length=5000)]
-    location: Annotated[OptionalText, Field(max_length=200)] = None
-    access_notes: Annotated[OptionalText, Field(max_length=1000)] = None
+    location: OptionalText = Field(default=None, max_length=200)
+    access_notes: OptionalText = Field(default=None, max_length=1000)
 
 
 class StaffRequestIn(RequestIn):
@@ -31,7 +38,7 @@ class MessageIn(BaseModel):
 
 
 class StaffUpdateIn(BaseModel):
-    body: Annotated[OptionalText, Field(max_length=2000)] = None
+    body: OptionalText = Field(default=None, max_length=2000)
     # Internal unless the manager chooses otherwise, so a note is never shown by accident.
     visibility: Visibility = Visibility.INTERNAL
     status: RequestStatus | None = None
@@ -116,13 +123,28 @@ class RequesterOut(BaseModel):
     has_account: bool
 
 
+class WorkOrderLinkOut(BaseModel):
+    id: uuid.UUID
+    reference: str
+    status: WorkOrderStatus
+
+
+class RequestLinkOut(BaseModel):
+    id: uuid.UUID
+    reference: str
+
+
 class StaffRequestSummaryOut(RequestSummaryOut):
     property_id: uuid.UUID
     resident_name: str
     submitted_on_behalf: bool
+    work_order: WorkOrderLinkOut | None
+    # Whether triage is still open: not yet linked to a work order or another request.
+    needs_triage: bool
 
 
 class StaffRequestOut(StaffRequestSummaryOut):
+    duplicate_of: RequestLinkOut | None
     description: str
     location: str | None
     access_notes: str | None

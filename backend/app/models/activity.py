@@ -34,6 +34,12 @@ class EventType(enum.StrEnum):
     REQUEST_SUBMITTED = "request.submitted"
     REQUEST_STATUS_CHANGED = "request.status_changed"
     REQUEST_ATTACHMENT_ADDED = "request.attachment_added"
+    REQUEST_CONVERTED = "request.converted"
+    REQUEST_DECLINED = "request.declined"
+    REQUEST_MARKED_DUPLICATE = "request.marked_duplicate"
+    WORK_ORDER_CREATED = "work_order.created"
+    WORK_ORDER_UPDATED = "work_order.updated"
+    WORK_ORDER_STATUS_CHANGED = "work_order.status_changed"
 
 
 class ActivityEventImmutableError(Exception):

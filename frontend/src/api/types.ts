@@ -136,6 +136,7 @@ export type RequestStatus =
   | 'resolved'
   | 'closed'
   | 'cancelled'
+  | 'declined'
 
 export type TimelineKind = 'submitted' | 'status_changed' | 'message' | 'note'
 
@@ -182,10 +183,26 @@ export type ResidentRequest = RequestSummary & {
   attachments: Attachment[]
 }
 
+export type WorkOrderStatus =
+  | 'open'
+  | 'assigned'
+  | 'in_progress'
+  | 'on_hold'
+  | 'awaiting_approval'
+  | 'ready_for_review'
+  | 'completed'
+  | 'closed'
+  | 'cancelled'
+
+export type WorkOrderLink = { id: string; reference: string; status: WorkOrderStatus }
+
 export type StaffRequestSummary = RequestSummary & {
   property_id: string
   resident_name: string
   submitted_on_behalf: boolean
+  work_order: WorkOrderLink | null
+  // Not yet linked to a work order or another request, and still open.
+  needs_triage: boolean
 }
 
 export type StaffTimelineEntry = {
@@ -199,6 +216,7 @@ export type StaffTimelineEntry = {
 }
 
 export type StaffRequest = StaffRequestSummary & {
+  duplicate_of: { id: string; reference: string } | null
   description: string
   location: string | null
   access_notes: string | null
@@ -212,4 +230,52 @@ export type StaffRequest = StaffRequestSummary & {
   }
   timeline: StaffTimelineEntry[]
   attachments: Attachment[]
+}
+
+export type WorkOrderSummary = {
+  id: string
+  reference: string
+  title: string
+  status: WorkOrderStatus
+  priority: Urgency
+  category: RequestCategory
+  property_id: string
+  property_name: string
+  unit_label: string | null
+  building_name: string | null
+  due_date: string | null
+  overdue: boolean
+  request_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type EntryKind = 'created' | 'status_changed' | 'edited' | 'note' | 'request_linked'
+
+export type WorkOrderEntry = {
+  id: string
+  kind: EntryKind
+  visibility: 'resident' | 'internal'
+  body: string | null
+  status: WorkOrderStatus | null
+  // For edits: each changed field with its value before and after.
+  details: Record<string, [unknown, unknown]> | null
+  author_name: string | null
+  created_at: string
+}
+
+export type LinkedRequest = {
+  id: string
+  reference: string
+  title: string
+  status: RequestStatus
+  resident_name: string
+}
+
+export type WorkOrder = WorkOrderSummary & {
+  scope: string
+  linked_requests: LinkedRequest[]
+  history: WorkOrderEntry[]
+  // What this person can move it to by hand right now.
+  allowed_statuses: WorkOrderStatus[]
 }

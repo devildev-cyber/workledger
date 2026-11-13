@@ -55,7 +55,8 @@ def main(
 
     print(
         f"Created {ORGANIZATION_NAME}: {result.properties} properties, {result.units} units, "
-        f"{result.residents} residents, {result.requests} requests.\n\n"
+        f"{result.residents} residents, {result.requests} requests, "
+        f"{result.work_orders} work orders.\n\n"
         f"Sign in with any of these accounts, all using the password {result.password}\n"
         f"  administrator   {ADMIN_EMAIL}\n"
         f"  manager         {MANAGER_EMAIL}   (manages Maple Court and Riverside Lofts)\n"

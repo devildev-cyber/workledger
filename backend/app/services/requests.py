@@ -1,8 +1,8 @@
 import uuid
 from dataclasses import dataclass
+from datetime import timedelta
 
-from sqlalchemy import Select, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import utc_now
@@ -27,6 +27,7 @@ from app.models import (
     Visibility,
 )
 from app.services.activity import record_event
+from app.services.numbering import next_number
 
 REFERENCE_PREFIX = "REQ-"
 LIST_LIMIT = 200
@@ -51,28 +52,6 @@ def reference_for(number: int) -> str:
     return f"{REFERENCE_PREFIX}{number:04d}"
 
 
-def _next_number(db: Session, organization_id: uuid.UUID) -> int:
-    """Give out the next reference number. The UPDATE locks the counter row until commit, so
-    two requests submitted at once cannot receive the same number."""
-    if db.get(RequestCounter, organization_id) is None:
-        db.add(RequestCounter(organization_id=organization_id, last_number=0))
-        try:
-            db.flush()
-        except IntegrityError:
-            db.rollback()
-            raise RequestError("Please try submitting again") from None
-    db.execute(
-        update(RequestCounter)
-        .where(RequestCounter.organization_id == organization_id)
-        .values(last_number=RequestCounter.last_number + 1)
-    )
-    number = db.scalar(
-        select(RequestCounter.last_number).where(RequestCounter.organization_id == organization_id)
-    )
-    assert number is not None
-    return number
-
-
 # --- Creating and changing ---------------------------------------------------------------
 
 
@@ -93,7 +72,7 @@ def create_request(
 ) -> MaintenanceRequest:
     request = MaintenanceRequest(
         organization_id=organization_id,
-        number=_next_number(db, organization_id),
+        number=next_number(db, RequestCounter, organization_id),
         property_id=unit.property_id,
         unit_id=unit.id,
         resident_id=resident.id,
@@ -177,6 +156,12 @@ def post_staff_update(
     """
     entries: list[RequestUpdate] = []
     if new_status is not None:
+        if request.work_order_id is not None:
+            raise RequestError(
+                "This request follows its work order. Change the work order's status instead"
+            )
+        if new_status == RequestStatus.DECLINED:
+            raise RequestError("Use Decline, so the resident is given a reason")
         entries.append(_change_status(db, request, actor=actor, new_status=new_status))
     if body:
         kind = UpdateKind.MESSAGE if visibility == Visibility.RESIDENT else UpdateKind.NOTE
@@ -188,9 +173,15 @@ def post_staff_update(
 
 
 def _change_status(
-    db: Session, request: MaintenanceRequest, *, actor: User, new_status: RequestStatus
+    db: Session,
+    request: MaintenanceRequest,
+    *,
+    actor: User,
+    new_status: RequestStatus,
+    allow_reopen: bool = False,
 ) -> RequestUpdate:
-    if request.status in FINISHED_STATUSES:
+    reopening = allow_reopen and request.status == RequestStatus.CLOSED
+    if request.status in FINISHED_STATUSES and not reopening:
         raise RequestError("This request is finished and can no longer change status")
     if request.status == new_status:
         raise RequestError("The request already has this status")
@@ -221,6 +212,141 @@ def _change_status(
     return entry
 
 
+def change_status_for_work_order(
+    db: Session, request: MaintenanceRequest, *, actor: User, new_status: RequestStatus
+) -> None:
+    """Move a linked request along with its work order, including back out of closed when an
+    administrator reopens the work. A request the resident withdrew or that was declined, or
+    that already has this status, is left alone rather than treated as an error."""
+    if request.status in (RequestStatus.CANCELLED, RequestStatus.DECLINED):
+        return
+    if request.status == new_status:
+        return
+    _change_status(db, request, actor=actor, new_status=new_status, allow_reopen=True)
+    request.updated_at = utc_now()
+
+
+def add_staff_message(
+    db: Session, request: MaintenanceRequest, *, actor: User, body: str
+) -> RequestUpdate:
+    """A message the resident can read, posted by staff."""
+    entry = _add_update(
+        db,
+        request,
+        actor=actor,
+        kind=UpdateKind.MESSAGE,
+        visibility=Visibility.RESIDENT,
+        body=body,
+    )
+    request.updated_at = utc_now()
+    return entry
+
+
+# --- Triage -----------------------------------------------------------------------------
+
+
+def _require_triageable(request: MaintenanceRequest) -> None:
+    if request.status not in (RequestStatus.SUBMITTED, RequestStatus.IN_REVIEW):
+        raise RequestError("This request has already been dealt with")
+    if request.work_order_id is not None or request.duplicate_of_id is not None:
+        raise RequestError("This request is already linked to other work")
+
+
+def require_triageable(request: MaintenanceRequest) -> None:
+    _require_triageable(request)
+
+
+def needs_triage(request: MaintenanceRequest) -> bool:
+    return (
+        request.status in (RequestStatus.SUBMITTED, RequestStatus.IN_REVIEW)
+        and request.work_order_id is None
+        and request.duplicate_of_id is None
+    )
+
+
+def decline_request(db: Session, request: MaintenanceRequest, *, actor: User, reason: str) -> None:
+    """Turn a request down. The resident always sees the reason."""
+    _require_triageable(request)
+    _change_status(db, request, actor=actor, new_status=RequestStatus.DECLINED)
+    _add_update(
+        db,
+        request,
+        actor=actor,
+        kind=UpdateKind.MESSAGE,
+        visibility=Visibility.RESIDENT,
+        body=reason,
+    )
+    request.updated_at = utc_now()
+    record_event(
+        db,
+        event_type=EventType.REQUEST_DECLINED,
+        organization_id=request.organization_id,
+        actor=actor,
+        subject_type="maintenance_request",
+        subject_id=request.id,
+        after={"reference": reference_for(request.number)},
+    )
+
+
+def mark_duplicate(
+    db: Session,
+    request: MaintenanceRequest,
+    original: MaintenanceRequest,
+    *,
+    actor: User,
+) -> None:
+    """Record that this is another report of a problem already reported.
+
+    The resident keeps following their own request. It is tied to the original so that it
+    moves with the same work, and it says nothing about who made the other report.
+    """
+    _require_triageable(request)
+    if original.id == request.id:
+        raise RequestError("A request cannot be a duplicate of itself")
+    if original.organization_id != request.organization_id:
+        raise RequestError("That request cannot be found")
+    if original.property_id != request.property_id:
+        raise RequestError("Duplicates must be at the same property")
+    if original.duplicate_of_id is not None:
+        raise RequestError("That request is itself a duplicate. Choose the original")
+    if original.status in FINISHED_STATUSES:
+        raise RequestError("That request is already finished")
+
+    request.duplicate_of_id = original.id
+    if request.status == RequestStatus.SUBMITTED:
+        _change_status(db, request, actor=actor, new_status=RequestStatus.IN_REVIEW)
+    add_staff_message(
+        db,
+        request,
+        actor=actor,
+        body="We have linked your report with an earlier report of the same problem. "
+        "Updates will appear here.",
+    )
+    record_event(
+        db,
+        event_type=EventType.REQUEST_MARKED_DUPLICATE,
+        organization_id=request.organization_id,
+        actor=actor,
+        subject_type="maintenance_request",
+        subject_id=request.id,
+        after={
+            "reference": reference_for(request.number),
+            "duplicate_of": reference_for(original.number),
+        },
+    )
+
+
+def get_request(
+    db: Session, *, organization_id: uuid.UUID, request_id: uuid.UUID
+) -> MaintenanceRequest | None:
+    return db.scalar(
+        select(MaintenanceRequest).where(
+            MaintenanceRequest.id == request_id,
+            MaintenanceRequest.organization_id == organization_id,
+        )
+    )
+
+
 def post_resident_message(
     db: Session, request: MaintenanceRequest, *, actor: User, body: str
 ) -> RequestUpdate:
@@ -238,8 +364,13 @@ def post_resident_message(
     return entry
 
 
+def can_withdraw(request: MaintenanceRequest) -> bool:
+    """Once a work order exists the work is planned, so the resident messages instead."""
+    return request.status in CANCELLABLE_STATUSES and request.work_order_id is None
+
+
 def cancel_request(db: Session, request: MaintenanceRequest, *, actor: User) -> None:
-    if request.status not in CANCELLABLE_STATUSES:
+    if not can_withdraw(request):
         raise RequestError("Work has already started, so this request can no longer be withdrawn")
     _change_status(db, request, actor=actor, new_status=RequestStatus.CANCELLED)
     request.updated_at = utc_now()
@@ -260,6 +391,20 @@ def _rows(db: Session, statement: Select[tuple[MaintenanceRequest]]) -> list[Req
         RequestRow(request=request, property=property_, unit=unit, building=building, resident=res)
         for request, property_, unit, building, res in result
     ]
+
+
+def _matches(search: str):  # noqa: ANN202 - a SQLAlchemy clause
+    """Words in the summary, description, resident's name, or the reference number."""
+    text = f"%{search.strip().lower()}%"
+    clauses = [
+        func.lower(MaintenanceRequest.title).like(text),
+        func.lower(MaintenanceRequest.description).like(text),
+        func.lower(Resident.full_name).like(text),
+    ]
+    digits = search.strip().upper().removeprefix(REFERENCE_PREFIX)
+    if digits.isdigit():
+        clauses.append(MaintenanceRequest.number == int(digits))
+    return or_(*clauses)
 
 
 def _newest_first(
@@ -300,6 +445,10 @@ def list_for_staff(
     scope: PropertyScope,
     status: RequestStatus | None = None,
     property_id: uuid.UUID | None = None,
+    urgency: Urgency | None = None,
+    needs_triage: bool = False,
+    search: str | None = None,
+    older_than_days: int | None = None,
 ) -> list[RequestRow]:
     statement = select(MaintenanceRequest).where(
         MaintenanceRequest.organization_id == organization_id
@@ -310,6 +459,20 @@ def list_for_staff(
         statement = statement.where(MaintenanceRequest.status == status)
     if property_id is not None:
         statement = statement.where(MaintenanceRequest.property_id == property_id)
+    if urgency is not None:
+        statement = statement.where(MaintenanceRequest.urgency == urgency)
+    if needs_triage:
+        statement = statement.where(
+            MaintenanceRequest.status.in_([RequestStatus.SUBMITTED, RequestStatus.IN_REVIEW]),
+            MaintenanceRequest.work_order_id.is_(None),
+            MaintenanceRequest.duplicate_of_id.is_(None),
+        )
+    if older_than_days is not None:
+        statement = statement.where(
+            MaintenanceRequest.created_at <= utc_now() - timedelta(days=older_than_days)
+        )
+    if search:
+        statement = statement.where(_matches(search))
     return _rows(db, _newest_first(statement))
 
 
@@ -324,6 +487,20 @@ def get_for_staff(
         statement = statement.where(MaintenanceRequest.property_id.in_(scope.property_ids))
     rows = _rows(db, statement)
     return rows[0] if rows else None
+
+
+def list_for_work_order(
+    db: Session, *, organization_id: uuid.UUID, work_order_id: uuid.UUID
+) -> list[RequestRow]:
+    statement = (
+        select(MaintenanceRequest)
+        .where(
+            MaintenanceRequest.organization_id == organization_id,
+            MaintenanceRequest.work_order_id == work_order_id,
+        )
+        .order_by(MaintenanceRequest.number)
+    )
+    return _rows(db, statement)
 
 
 def timeline(

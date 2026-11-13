@@ -9,6 +9,7 @@ from app.api import (
     organizations,
     password_reset,
     requests,
+    work_orders,
 )
 from app.core.config import Settings, get_settings
 from app.core.mail import EmailSender, build_email_sender
@@ -32,6 +33,7 @@ def create_app(
     app.include_router(organizations.router, prefix="/api")
     app.include_router(directory.router, prefix="/api")
     app.include_router(requests.router, prefix="/api")
+    app.include_router(work_orders.router, prefix="/api")
     app.include_router(members.router, prefix="/api")
     app.include_router(invitations.organization_router, prefix="/api")
     app.include_router(invitations.public_router, prefix="/api")

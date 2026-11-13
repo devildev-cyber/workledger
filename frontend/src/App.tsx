@@ -20,6 +20,8 @@ import { RequestsPage } from './pages/RequestsPage.tsx'
 import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { ResidentsPage } from './pages/ResidentsPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
+import { WorkOrderPage } from './pages/WorkOrderPage.tsx'
+import { WorkOrdersPage } from './pages/WorkOrdersPage.tsx'
 
 // The router itself is supplied by main.tsx, so tests can start at any address.
 function App() {
@@ -46,6 +48,11 @@ function App() {
             <Route
               path="organizations/:organizationId/requests/:requestId"
               element={<RequestPage />}
+            />
+            <Route path="organizations/:organizationId/work-orders" element={<WorkOrdersPage />} />
+            <Route
+              path="organizations/:organizationId/work-orders/:workOrderId"
+              element={<WorkOrderPage />}
             />
             <Route path="organizations/:organizationId/my-requests" element={<MyRequestsPage />} />
             <Route

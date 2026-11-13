@@ -26,6 +26,14 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   resolved: 'Resolved',
   closed: 'Closed',
   cancelled: 'Withdrawn',
+  declined: 'Declined',
+}
+
+export const URGENCY_SHORT: Record<Urgency, string> = {
+  routine: 'Routine',
+  soon: 'Soon',
+  urgent: 'Urgent',
+  emergency: 'Emergency',
 }
 
 export const STATUS_ORDER: RequestStatus[] = [
@@ -35,6 +43,7 @@ export const STATUS_ORDER: RequestStatus[] = [
   'resolved',
   'closed',
   'cancelled',
+  'declined',
 ]
 
 export const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS) as RequestCategory[]

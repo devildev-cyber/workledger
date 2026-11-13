@@ -19,8 +19,28 @@ from app.models.requests import (
 )
 from app.models.session import UserSession
 from app.models.user import User
+from app.models.work_orders import (
+    ADMINISTRATOR_ONLY_FROM,
+    FINAL_STATUSES,
+    SYSTEM_STATUSES,
+    TRANSITIONS,
+    EntryKind,
+    WorkOrder,
+    WorkOrderCounter,
+    WorkOrderEntry,
+    WorkOrderStatus,
+)
 
 __all__ = [
+    "ADMINISTRATOR_ONLY_FROM",
+    "FINAL_STATUSES",
+    "SYSTEM_STATUSES",
+    "TRANSITIONS",
+    "EntryKind",
+    "WorkOrder",
+    "WorkOrderCounter",
+    "WorkOrderEntry",
+    "WorkOrderStatus",
     "CANCELLABLE_STATUSES",
     "FINISHED_STATUSES",
     "ActivityEvent",

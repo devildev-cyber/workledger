@@ -11,17 +11,27 @@ import { STATUS_LABELS, STATUS_ORDER } from './labels.ts'
 type StaffUpdateFormProps = {
   url: string
   currentStatus: RequestStatus
+  // Once a request is part of a work order, the work order decides its status.
+  statusFollowsWorkOrder?: boolean
   onSaved: () => void
 }
 
-export function StaffUpdateForm({ url, currentStatus, onSaved }: StaffUpdateFormProps) {
+export function StaffUpdateForm({
+  url,
+  currentStatus,
+  statusFollowsWorkOrder = false,
+  onSaved,
+}: StaffUpdateFormProps) {
   const [status, setStatus] = useState('')
   const [body, setBody] = useState('')
   const [visibility, setVisibility] = useState<'internal' | 'resident'>('internal')
   const { busy, error, run, fail } = useAction()
 
-  const finished = currentStatus === 'closed' || currentStatus === 'cancelled'
-  const choices = STATUS_ORDER.filter((value) => value !== 'submitted' && value !== currentStatus)
+  const finished = ['closed', 'cancelled', 'declined'].includes(currentStatus)
+  // Declining has its own form, because the resident must be given a reason.
+  const choices = STATUS_ORDER.filter(
+    (value) => value !== 'submitted' && value !== 'declined' && value !== currentStatus,
+  )
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
@@ -49,7 +59,7 @@ export function StaffUpdateForm({ url, currentStatus, onSaved }: StaffUpdateForm
       className="space-y-3 rounded border border-slate-200 bg-white p-4"
     >
       <FormError message={error} />
-      {!finished && (
+      {!finished && !statusFollowsWorkOrder && (
         <SelectField
           id="update-status"
           label="Change status"
@@ -58,6 +68,11 @@ export function StaffUpdateForm({ url, currentStatus, onSaved }: StaffUpdateForm
           options={choices.map((value) => ({ value, label: STATUS_LABELS[value] }))}
           onChange={setStatus}
         />
+      )}
+      {statusFollowsWorkOrder && !finished && (
+        <p className="text-sm text-slate-600">
+          The status of this request follows its work order. Change the work order to update it.
+        </p>
       )}
       <TextAreaField
         id="update-body"

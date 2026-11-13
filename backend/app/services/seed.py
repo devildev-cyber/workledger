@@ -22,8 +22,9 @@ from app.models import (
     Urgency,
     User,
     Visibility,
+    WorkOrderStatus,
 )
-from app.services import assignments, directory, requests, residents
+from app.services import assignments, directory, requests, residents, work_orders
 from app.services.organizations import add_membership, create_organization
 from app.services.users import create_user
 
@@ -134,6 +135,7 @@ class SeedResult:
     units: int
     residents: int
     requests: int
+    work_orders: int
     password: str
 
 
@@ -224,7 +226,7 @@ def seed_demo_organization(db: Session, *, password: str) -> SeedResult:
         )
 
     _add_history(db, admin, units, people, today)
-    request_count = _add_requests(
+    request_count, work_order_count = _add_requests(
         db, organization, users, units, people, resident_user=users[RESIDENT_EMAIL]
     )
 
@@ -234,6 +236,7 @@ def seed_demo_organization(db: Session, *, password: str) -> SeedResult:
         units=len(units),
         residents=len(people),
         requests=request_count,
+        work_orders=work_order_count,
         password=password,
     )
 
@@ -300,7 +303,29 @@ REQUESTS = [
     (12, "Oak Terrace Houses", "", "No. 3", RequestCategory.OTHER, Urgency.ROUTINE,
      "Smoke detector chirping", "The detector in the hall beeps every minute.",
      "Hall", RequestStatus.CLOSED, "Battery replaced.", None),
+    # A second report of the pantry mice, left for the demo manager to mark as a duplicate.
+    (2, "Maple Court", "Building A", "1B", RequestCategory.PESTS, Urgency.SOON,
+     "Mouse seen in the kitchen", "A mouse ran across the kitchen floor twice last night.",
+     "Kitchen", RequestStatus.SUBMITTED, None, None),
 ]  # fmt: skip
+
+
+@dataclass(frozen=True)
+class WorkOrderPlan:
+    """Which requests were turned into work orders, how far each has got, and when it is due."""
+
+    path: list[WorkOrderStatus]
+    due_in_days: int
+
+
+_DONE = [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.READY_FOR_REVIEW, WorkOrderStatus.COMPLETED]
+WORK_ORDER_PLANS = {
+    0: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS], 5),  # faucet
+    2: WorkOrderPlan(_DONE, -3),  # radiator, finished
+    5: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD], 14),  # dishwasher
+    7: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS], -2),  # no hot water, overdue
+    8: WorkOrderPlan([*_DONE, WorkOrderStatus.CLOSED], -20),  # smoke detector
+}
 
 
 def _add_requests(
@@ -311,15 +336,18 @@ def _add_requests(
     people: list[Resident],
     *,
     resident_user: User,
-) -> int:
-    """A spread of requests in every status. Only the demo resident submits for themselves;
-    the rest were entered by staff, as after a phone call."""
+) -> tuple[int, int]:
+    """Requests at every stage: some waiting for triage, some already work orders.
+
+    Only the demo resident submits for themselves; the rest were entered by staff, as after a
+    phone call."""
     admin = users[ADMIN_EMAIL]
     manager = users[MANAGER_EMAIL]
-    for (
+    today = utc_now().date()
+    for index, (
         person_index, property_name, building_name, label, category, urgency, title, description,
         location, final_status, shared_note, internal_note,
-    ) in REQUESTS:  # fmt: skip
+    ) in enumerate(REQUESTS):  # fmt: skip
         own = person_index == 0
         created = requests.create_request(
             db,
@@ -335,26 +363,49 @@ def _add_requests(
             access_notes=None,
             on_behalf=not own,
         )
-        steps = [RequestStatus.IN_REVIEW, RequestStatus.IN_PROGRESS, RequestStatus.RESOLVED]
-        if final_status != RequestStatus.SUBMITTED:
-            for step in steps[: steps.index(final_status) + 1] if final_status in steps else steps:
+        plan = WORK_ORDER_PLANS.get(index)
+        if plan is None:
+            if final_status == RequestStatus.IN_REVIEW:
                 requests.post_staff_update(
                     db, created, actor=manager, body=None, visibility=Visibility.RESIDENT,
-                    new_status=step,
+                    new_status=RequestStatus.IN_REVIEW,
                 )  # fmt: skip
-            if final_status == RequestStatus.CLOSED:
+            if shared_note:
                 requests.post_staff_update(
-                    db, created, actor=admin, body=None, visibility=Visibility.RESIDENT,
-                    new_status=RequestStatus.CLOSED,
+                    db, created, actor=manager, body=shared_note, visibility=Visibility.RESIDENT,
+                    new_status=None,
                 )  # fmt: skip
-        if shared_note:
-            requests.post_staff_update(
-                db, created, actor=manager, body=shared_note, visibility=Visibility.RESIDENT,
-                new_status=None,
+            if internal_note:
+                requests.post_staff_update(
+                    db, created, actor=manager, body=internal_note, visibility=Visibility.INTERNAL,
+                    new_status=None,
+                )  # fmt: skip
+            continue
+
+        unit = units[(property_name, building_name, label)]
+        work_order = work_orders.convert_request(
+            db,
+            created,
+            actor=manager,
+            property_=db.get(Property, unit.property_id),
+            unit=unit,
+            title=title,
+            scope=description,
+            category=category,
+            priority=urgency,
+            due_date=today + timedelta(days=plan.due_in_days),
+        )
+        for step in plan.path:
+            work_orders.change_status(
+                db, work_order, actor=admin if step == WorkOrderStatus.CLOSED else manager,
+                new_status=step, note=None, is_administrator=True,
             )  # fmt: skip
         if internal_note:
-            requests.post_staff_update(
-                db, created, actor=manager, body=internal_note, visibility=Visibility.INTERNAL,
-                new_status=None,
-            )  # fmt: skip
-    return len(REQUESTS)
+            work_orders.add_note(
+                db, work_order, actor=manager, body=internal_note, visibility=Visibility.INTERNAL
+            )
+        if shared_note:
+            work_orders.add_note(
+                db, work_order, actor=manager, body=shared_note, visibility=Visibility.RESIDENT
+            )
+    return len(REQUESTS), len(WORK_ORDER_PLANS)

@@ -8,6 +8,7 @@ const TONES: Record<RequestStatus, string> = {
   resolved: 'bg-green-100 text-green-900',
   closed: 'bg-green-100 text-green-900',
   cancelled: 'bg-slate-100 text-slate-600',
+  declined: 'bg-red-100 text-red-900',
 }
 
 export function StatusBadge({ status }: { status: RequestStatus }) {

@@ -63,13 +63,19 @@ A resident's report of a problem, recorded as submitted. A request is not yet a 
 The human-readable identifier given to a maintenance request so residents and managers can refer to it, such as `REQ-0042`. Numbered per organization.
 
 **Request status**
-Where a request stands, in the words a resident sees: received, in review, in progress, resolved, closed, or withdrawn ([decision 0017](decisions/0017-maintenance-requests.md)).
+Where a request stands, in the words a resident sees: received, in review, in progress, resolved, closed, withdrawn, or declined ([decision 0017](decisions/0017-maintenance-requests.md), [0019](decisions/0019-work-orders-and-triage.md)).
 
 **Timeline**
 The list of things that happened on a request: when it was submitted, each status change, and each message or note. Every entry is either resident-visible or internal.
 
 **Triage**
-A manager's review of a new request: confirming urgency, checking for duplicates, and deciding whether to create a work order.
+A manager's review of a new request: confirming urgency, checking for duplicates, and deciding whether to create a work order, mark it as a duplicate, or decline it with a reason. A request is "waiting for triage" until it is linked to a work order or another request, or finished.
+
+**Duplicate**
+A request that reports a problem already reported. It stays open and follows the original's work order.
+
+**Work order lifecycle**
+The statuses a work order moves through, from open to closed or cancelled, and the moves allowed between them ([decision 0019](decisions/0019-work-orders-and-triage.md)). A move the lifecycle does not allow is refused.
 
 **Work order**
 The durable record of the operational response to a request: scope, priority, assignment, estimates, approvals, work performed, costs, and history.

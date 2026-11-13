@@ -82,3 +82,7 @@ export function requestsPath(organizationId: string): string {
 export function myRequestsPath(organizationId: string): string {
   return `${organizationPath(organizationId)}/my-requests`
 }
+
+export function workOrdersPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/work-orders`
+}

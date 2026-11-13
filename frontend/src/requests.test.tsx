@@ -72,6 +72,9 @@ function staffRequest(overrides: Partial<StaffRequest> = {}): StaffRequest {
     property_id: 'p-1',
     resident_name: 'Rae Resident',
     submitted_on_behalf: false,
+    work_order: null,
+    needs_triage: true,
+    duplicate_of: null,
     resident: {
       id: 'res-1',
       full_name: 'Rae Resident',
@@ -439,30 +442,125 @@ describe('following a request', () => {
 })
 
 describe('staff request list', () => {
-  it('lists requests and filters by status', async () => {
+  it('opens on the triage queue, grouped by urgency', async () => {
+    const urgent = { ...summary('r-2', 'REQ-0002', 'submitted'), urgency: 'urgent' as const }
     mockApi({
       'GET /api/auth/me': { body: sessionFor([asManager]) },
-      [`GET ${ORG}/requests`]: { body: [summary('r-1', 'REQ-0001', 'submitted'), summary('r-2', 'REQ-0002', 'in_review')] },
-      [`GET ${ORG}/requests?status=in_review`]: { body: [summary('r-2', 'REQ-0002', 'in_review')] },
+      [`GET ${ORG}/properties`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true`]: {
+        body: [summary('r-1', 'REQ-0001', 'submitted'), urgent],
+      },
     })
 
     renderAt(`${ORG_PATH}/requests`)
 
     expect(await screen.findByText('REQ-0001')).toBeInTheDocument()
+    const groups = screen.getAllByRole('region').map((group) => group.getAttribute('aria-label'))
+    expect(groups).toEqual(['Urgent', 'Soon'])
+    expect(within(screen.getByRole('region', { name: 'Urgent' })).getByText('REQ-0002')).toBeVisible()
+  })
+
+  it('regroups by property without asking the server again', async () => {
+    const elsewhere = { ...summary('r-2', 'REQ-0002', 'submitted'), property_name: 'Oak Terrace' }
+    const { requests } = mockApi({
+      'GET /api/auth/me': { body: sessionFor([asManager]) },
+      [`GET ${ORG}/properties`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true`]: {
+        body: [summary('r-1', 'REQ-0001', 'submitted'), elsewhere],
+      },
+    })
+
+    renderAt(`${ORG_PATH}/requests`)
+    await screen.findByText('REQ-0001')
+    const before = requests.length
+    fireEvent.change(screen.getByLabelText('Group by'), { target: { value: 'property' } })
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('region').map((group) => group.getAttribute('aria-label'))).toEqual([
+        'Maple Court',
+        'Oak Terrace',
+      ]),
+    )
+    expect(requests).toHaveLength(before)
+  })
+
+  it('shows every request and filters by status', async () => {
+    mockApi({
+      'GET /api/auth/me': { body: sessionFor([asManager]) },
+      [`GET ${ORG}/properties`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true`]: { body: [] },
+      [`GET ${ORG}/requests`]: { body: [summary('r-1', 'REQ-0001', 'submitted'), summary('r-2', 'REQ-0002', 'in_review')] },
+      [`GET ${ORG}/requests?status=in_review`]: { body: [summary('r-2', 'REQ-0002', 'in_review')] },
+    })
+
+    renderAt(`${ORG_PATH}/requests`)
+    expect(await screen.findByText('Nothing is waiting for triage.')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'all' } })
+    expect(await screen.findByText('REQ-0001')).toBeInTheDocument()
     expect(screen.getByText('REQ-0002')).toBeInTheDocument()
     expect(screen.getAllByText('Rae Resident')).toHaveLength(2)
 
-    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'in_review' } })
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'in_review' } })
     await waitFor(() => expect(screen.queryByText('REQ-0001')).not.toBeInTheDocument())
     expect(screen.getByText('REQ-0002')).toBeInTheDocument()
+  })
+
+  it('sends the chosen filters and search to the server', async () => {
+    const { requests } = mockApi({
+      'GET /api/auth/me': { body: sessionFor([asManager]) },
+      [`GET ${ORG}/properties`]: { body: [{ id: 'p-1', name: 'Maple Court' }] },
+      [`GET ${ORG}/requests?needs_triage=true`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true&urgency=emergency&property_id=p-1&older_than_days=3`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true&urgency=emergency&property_id=p-1&q=leak&older_than_days=3`]: {
+        body: [summary('r-1', 'REQ-0001', 'submitted')],
+      },
+    })
+
+    renderAt(`${ORG_PATH}/requests`)
+    await screen.findByText('Nothing is waiting for triage.')
+    await screen.findByRole('option', { name: 'Maple Court' })
+    fireEvent.change(screen.getByLabelText('Urgency'), { target: { value: 'emergency' } })
+    fireEvent.change(screen.getByLabelText('Property'), { target: { value: 'p-1' } })
+    fireEvent.change(screen.getByLabelText('Age'), { target: { value: '3' } })
+    expect(await screen.findByText('No requests match these filters.')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'leak' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(await screen.findByText('REQ-0001')).toBeInTheDocument()
+    expect(requests.at(-1)?.path).toContain('q=leak')
+  })
+
+  it('points to the work order a request became', async () => {
+    const converted = {
+      ...summary('r-1', 'REQ-0001', 'in_review'),
+      needs_triage: false,
+      work_order: { id: 'w-1', reference: 'WO-0001', status: 'open' as const },
+    }
+    mockApi({
+      'GET /api/auth/me': { body: sessionFor([asManager]) },
+      [`GET ${ORG}/properties`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true`]: { body: [converted] },
+    })
+
+    renderAt(`${ORG_PATH}/requests`)
+
+    const link = await screen.findByRole('link', { name: 'WO-0001' })
+    expect(link).toHaveAttribute('href', `${ORG_PATH}/work-orders/w-1`)
   })
 
   it('says so when nothing has been reported', async () => {
     mockApi({
       'GET /api/auth/me': { body: sessionFor([harborAdmin]) },
+      [`GET ${ORG}/properties`]: { body: [] },
+      [`GET ${ORG}/requests?needs_triage=true`]: { body: [] },
       [`GET ${ORG}/requests`]: { body: [] },
     })
     renderAt(`${ORG_PATH}/requests`)
+    expect(await screen.findByText('Nothing is waiting for triage.')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'all' } })
     expect(await screen.findByText('No requests have been reported yet.')).toBeInTheDocument()
   })
 })

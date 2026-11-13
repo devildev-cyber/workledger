@@ -39,10 +39,14 @@ class RequestStatus(enum.StrEnum):
     RESOLVED = "resolved"
     CLOSED = "closed"
     CANCELLED = "cancelled"
+    # Turned down by staff, always with a reason the resident can read.
+    DECLINED = "declined"
 
 
 # Nothing changes once a request reaches one of these.
-FINISHED_STATUSES = frozenset({RequestStatus.CLOSED, RequestStatus.CANCELLED})
+FINISHED_STATUSES = frozenset(
+    {RequestStatus.CLOSED, RequestStatus.CANCELLED, RequestStatus.DECLINED}
+)
 # A resident may still withdraw a request that nobody has started work on.
 CANCELLABLE_STATUSES = frozenset({RequestStatus.SUBMITTED, RequestStatus.IN_REVIEW})
 
@@ -96,6 +100,13 @@ class MaintenanceRequest(TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(String(200))
     access_notes: Mapped[str | None] = mapped_column(Text)
+    # Set when the request was turned into, or linked to, a work order. From then on the work
+    # order decides the request's status.
+    work_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("work_orders.id"), index=True
+    )
+    # Set when staff found this to be another report of the same problem.
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("maintenance_requests.id"))
 
 
 class RequestUpdate(TimestampMixin, Base):

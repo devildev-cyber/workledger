@@ -30,3 +30,4 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0016](0016-residents-and-tenancies.md) | Residents, move-ins, and private contact details | Accepted |
 | [0017](0017-maintenance-requests.md) | Maintenance requests and what residents can see | Accepted |
 | [0018](0018-attachments.md) | Attachments | Accepted |
+| [0019](0019-work-orders-and-triage.md) | Work orders, triage, and the status lifecycle | Accepted |

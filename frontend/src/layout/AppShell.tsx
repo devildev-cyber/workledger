@@ -11,6 +11,7 @@ import {
   organizationPath,
   propertiesPath,
   requestsPath,
+  workOrdersPath,
 } from '../organizations/organizations.ts'
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
 
@@ -42,6 +43,7 @@ export function AppShell() {
             {canSeeDirectory(membership.roles) && (
               <>
                 <Link to={requestsPath(membership.organization_id)}>Requests</Link>
+                <Link to={workOrdersPath(membership.organization_id)}>Work orders</Link>
                 <Link to={propertiesPath(membership.organization_id)}>Properties</Link>
                 <Link to={`${organizationPath(membership.organization_id)}/residents`}>Residents</Link>
               </>

@@ -12,6 +12,7 @@ from app.models import (
     RequestCounter,
     Role,
     User,
+    WorkOrderCounter,
 )
 from app.services.activity import record_event
 
@@ -29,6 +30,7 @@ def create_organization(session: Session, *, name: str, actor: User | None) -> O
     session.add(organization)
     session.flush()
     session.add(RequestCounter(organization_id=organization.id, last_number=0))
+    session.add(WorkOrderCounter(organization_id=organization.id, last_number=0))
 
     record_event(
         session,

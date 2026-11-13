@@ -7,20 +7,24 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.api.access import OrganizationContext, require_roles
 from app.api.deps import DbSession, FileStoreDep
+from app.api.work_orders import build_work_order
 from app.core.storage import FileNotStoredError
 from app.models import (
-    CANCELLABLE_STATUSES,
     FINISHED_STATUSES,
+    MaintenanceRequest,
     RequestAttachment,
     RequestStatus,
     Role,
+    Urgency,
     Visibility,
+    WorkOrderStatus,
 )
 from app.schemas.requests import (
     AttachmentOut,
     MessageIn,
     RequesterOut,
     RequestIn,
+    RequestLinkOut,
     RequestSummaryOut,
     ResidentRequestOut,
     StaffAttachmentOut,
@@ -30,8 +34,10 @@ from app.schemas.requests import (
     StaffTimelineEntryOut,
     StaffUpdateIn,
     TimelineEntryOut,
+    WorkOrderLinkOut,
 )
-from app.services import attachments, directory, requests, residents
+from app.schemas.work_orders import ConvertIn, DeclineIn, DuplicateIn, WorkOrderOut
+from app.services import attachments, directory, requests, residents, work_orders
 from app.services.attachments import AttachmentError, AttachmentLimitError
 from app.services.requests import RequestError, RequestRow
 
@@ -83,7 +89,7 @@ def _resident_detail(
         description=row.request.description,
         location=row.request.location,
         access_notes=row.request.access_notes,
-        can_cancel=row.request.status in CANCELLABLE_STATUSES,
+        can_cancel=requests.can_withdraw(row.request),
         can_message=not finished,
         timeline=[
             TimelineEntryOut(
@@ -106,18 +112,45 @@ def _resident_detail(
 # --- Staff output -----------------------------------------------------------------------
 
 
-def _staff_summary(row: RequestRow) -> StaffRequestSummaryOut:
+WorkOrderLinks = dict[uuid.UUID, tuple[int, WorkOrderStatus]]
+
+
+def _work_order_links(db: DbSession, rows: list[RequestRow]) -> WorkOrderLinks:
+    ids = {row.request.work_order_id for row in rows if row.request.work_order_id}
+    return work_orders.numbers_and_statuses(db, ids)
+
+
+def _staff_summary(row: RequestRow, links: WorkOrderLinks) -> StaffRequestSummaryOut:
+    linked = links.get(row.request.work_order_id) if row.request.work_order_id else None
     return StaffRequestSummaryOut(
         **_summary_fields(row),
         property_id=row.request.property_id,
         resident_name=row.resident.full_name,
         submitted_on_behalf=row.request.submitted_on_behalf,
+        work_order=WorkOrderLinkOut(
+            id=row.request.work_order_id,
+            reference=work_orders.reference_for(linked[0]),
+            status=linked[1],
+        )
+        if linked and row.request.work_order_id
+        else None,
+        needs_triage=requests.needs_triage(row.request),
     )
 
 
 def _staff_detail(db: DbSession, row: RequestRow) -> StaffRequestOut:
+    original = (
+        db.get(MaintenanceRequest, row.request.duplicate_of_id)
+        if row.request.duplicate_of_id
+        else None
+    )
     return StaffRequestOut(
-        **_staff_summary(row).model_dump(),
+        **_staff_summary(row, _work_order_links(db, [row])).model_dump(),
+        duplicate_of=RequestLinkOut(
+            id=original.id, reference=requests.reference_for(original.number)
+        )
+        if original
+        else None,
         description=row.request.description,
         location=row.request.location,
         access_notes=row.request.access_notes,
@@ -271,6 +304,10 @@ def list_requests(
     db: DbSession,
     request_status: Annotated[RequestStatus | None, Query(alias="status")] = None,
     property_id: uuid.UUID | None = None,
+    urgency: Urgency | None = None,
+    needs_triage: bool = False,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    older_than_days: Annotated[int | None, Query(ge=0, le=3650)] = None,
 ) -> list[StaffRequestSummaryOut]:
     rows = requests.list_for_staff(
         db,
@@ -278,8 +315,13 @@ def list_requests(
         scope=context.property_scope,
         status=request_status,
         property_id=property_id,
+        urgency=urgency,
+        needs_triage=needs_triage,
+        search=q,
+        older_than_days=older_than_days,
     )
-    return [_staff_summary(row) for row in rows]
+    links = _work_order_links(db, rows)
+    return [_staff_summary(row, links) for row in rows]
 
 
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
@@ -342,6 +384,63 @@ def update_request(
             visibility=body.visibility,
             new_status=body.status,
         )
+    except RequestError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return _staff_detail(db, _staff_request(db, context, request_id))
+
+
+# --- Triage -----------------------------------------------------------------------------
+
+
+@router.post("/requests/{request_id}/convert", status_code=status.HTTP_201_CREATED)
+def convert_request(
+    request_id: uuid.UUID, body: ConvertIn, context: StaffContext, db: DbSession
+) -> WorkOrderOut:
+    row = _staff_request(db, context, request_id)
+    request = row.request
+    try:
+        created = work_orders.convert_request(
+            db,
+            request,
+            actor=context.user,
+            property_=row.property,
+            unit=row.unit,
+            title=body.title or request.title,
+            scope=body.scope or request.description,
+            category=body.category or request.category,
+            priority=body.priority or request.urgency,
+            due_date=body.due_date,
+        )
+    except RequestError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return build_work_order(db, context, created.id)
+
+
+@router.post("/requests/{request_id}/duplicate")
+def mark_request_duplicate(
+    request_id: uuid.UUID, body: DuplicateIn, context: StaffContext, db: DbSession
+) -> StaffRequestOut:
+    row = _staff_request(db, context, request_id)
+    if body.duplicate_of_id == request_id:
+        raise HTTPException(422, "A request cannot be a duplicate of itself")
+    original = _staff_request(db, context, body.duplicate_of_id)
+    try:
+        work_orders.mark_duplicate(db, row.request, original.request, actor=context.user)
+    except RequestError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return _staff_detail(db, _staff_request(db, context, request_id))
+
+
+@router.post("/requests/{request_id}/decline")
+def decline_request(
+    request_id: uuid.UUID, body: DeclineIn, context: StaffContext, db: DbSession
+) -> StaffRequestOut:
+    row = _staff_request(db, context, request_id)
+    try:
+        requests.decline_request(db, row.request, actor=context.user, reason=body.reason)
     except RequestError as error:
         raise _refuse(error) from error
     db.commit()

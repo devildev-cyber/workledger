@@ -30,7 +30,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 1 | Identity, organizations, and access | Secure sign-in, roles, and enforced organization isolation | 0 | ✅ |
 | 2 | Property and unit directory | Organizations can model their properties, units, and residents | 1 | ✅ |
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | 🟨 |
-| 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ⬜ |
+| 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ✅ |
 | 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | ⬜ |
 | 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | ⬜ |
 | ★ | **Milestone A: core repair loop** | One repair flows from report to closure | 0–6 | ⬜ |
@@ -159,14 +159,16 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Search and filtering by property, status, assignee, urgency, and age.
 
 **Exit criteria**
-- [ ] Invalid status transitions are rejected and leave no partial changes in the work order or its history.
-- [ ] Every change records who made it and when.
-- [ ] A manager can triage the seeded queue without leaving the application.
+- [x] Invalid status transitions are rejected and leave no partial changes in the work order or its history.
+- [x] Every change records who made it and when.
+- [x] A manager can triage the seeded queue without leaving the application.
 
-**Decisions to make**
-- How requests and work orders relate: can several duplicate requests link to one work order, and can one request produce several work orders?
-- The full list of work-order statuses and allowed transitions, with room for the approval gate added in Phase 7.
-- Who may reopen or cancel a work order.
+**Decisions made**
+- Several duplicate requests can share one work order, and one request produces at most one ([decision 0019](docs/decisions/0019-work-orders-and-triage.md)).
+- The lifecycle has nine statuses and an explicit transition table, with `assigned` and `awaiting approval` reserved for Phases 5 and 7. Only an administrator can reopen a closed or cancelled work order ([decision 0019](docs/decisions/0019-work-orders-and-triage.md)).
+
+**Deferred**
+- The assignee filter, until assignment exists in Phase 5.
 
 ---
 

@@ -3,12 +3,18 @@ import { Link, useParams } from 'react-router'
 import type { StaffRequest } from '../api/types.ts'
 import { useApiData } from '../api/useApiData.ts'
 import { useCurrentUser } from '../auth/auth-context.ts'
-import { canSeeDirectory, findMembership, requestsPath } from '../organizations/organizations.ts'
+import {
+  canSeeDirectory,
+  findMembership,
+  requestsPath,
+  workOrdersPath,
+} from '../organizations/organizations.ts'
 import { AttachmentList } from '../requests/AttachmentList.tsx'
 import { CATEGORY_LABELS, URGENCY_LABELS } from '../requests/labels.ts'
 import { StaffUpdateForm } from '../requests/StaffUpdateForm.tsx'
 import { StatusBadge } from '../requests/StatusBadge.tsx'
 import { Timeline } from '../requests/Timeline.tsx'
+import { TriagePanel } from '../requests/TriagePanel.tsx'
 import { UploadForm } from '../requests/UploadForm.tsx'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
@@ -61,7 +67,33 @@ function StaffRequestDetail({
           {request.reference}
           {request.submitted_on_behalf ? ' · entered by staff' : ''}
         </p>
+        {request.work_order && (
+          <p className="text-sm">
+            Work order:{' '}
+            <Link
+              to={`${workOrdersPath(organizationId)}/${request.work_order.id}`}
+              className="underline"
+            >
+              {request.work_order.reference}
+            </Link>
+          </p>
+        )}
+        {request.duplicate_of && (
+          <p className="text-sm">
+            Duplicate of{' '}
+            <Link
+              to={`${requestsPath(organizationId)}/${request.duplicate_of.id}`}
+              className="underline"
+            >
+              {request.duplicate_of.reference}
+            </Link>
+          </p>
+        )}
       </div>
+
+      {request.needs_triage && (
+        <TriagePanel organizationId={organizationId} request={request} onChanged={reload} />
+      )}
 
       <section aria-labelledby="details-heading" className="space-y-3">
         <h2 id="details-heading" className="text-xl font-semibold">
@@ -124,7 +156,12 @@ function StaffRequestDetail({
             internal: entry.visibility === 'internal',
           }))}
         />
-        <StaffUpdateForm url={`${url}/updates`} currentStatus={request.status} onSaved={reload} />
+        <StaffUpdateForm
+          url={`${url}/updates`}
+          currentStatus={request.status}
+          statusFollowsWorkOrder={request.work_order !== null || request.duplicate_of !== null}
+          onSaved={reload}
+        />
       </section>
     </div>
   )
