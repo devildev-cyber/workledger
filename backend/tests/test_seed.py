@@ -151,7 +151,7 @@ def test_the_demo_has_a_queue_to_triage_and_work_orders_to_follow(
     # Five were turned into work orders. The manager does not look after Oak Terrace.
     everything = sign_in_as(client_factory, ADMIN_EMAIL).get(f"{base}/work-orders").json()
     assert len(everything) == 5
-    assert {item["status"] for item in work_orders} == {"in_progress", "completed", "on_hold"}
+    assert {item["status"] for item in work_orders} == {"ready_for_review", "completed", "on_hold"}
     # The emergency at Oak Terrace is past its due date.
     assert [item["title"] for item in everything if item["overdue"]] == ["No hot water"]
 
@@ -167,7 +167,7 @@ def test_the_demo_contractor_has_jobs_in_different_states(
 
     assert len(jobs) == 3
     assert {(job["status"], job["response"]) for job in jobs} == {
-        ("in_progress", "accepted"),
+        ("ready_for_review", "accepted"),
         ("completed", "accepted"),
         ("assigned", "pending"),
     }
@@ -177,3 +177,25 @@ def test_the_demo_contractor_has_jobs_in_different_states(
     waiting = next(job for job in jobs if job["response"] == "pending")
     detail = contractor.get(f"{base}/my-jobs/{waiting['id']}").json()
     assert detail["residents"] == [] and detail["access_notes"] == []
+
+
+def test_the_demo_has_work_to_verify_and_a_history_with_costs(
+    client_factory: ClientFactory, seeded: Organization
+) -> None:
+    base = f"/api/organizations/{seeded.id}"
+    manager = sign_in_as(client_factory, MANAGER_EMAIL)
+    admin = sign_in_as(client_factory, ADMIN_EMAIL)
+
+    waiting = manager.get(f"{base}/work-orders", params={"status": "ready_for_review"}).json()
+    history = admin.get(f"{base}/work-orders", params={"history_only": "true"}).json()
+
+    assert [item["title"] for item in waiting] == ["Kitchen faucet drips"]
+    detail = manager.get(f"{base}/work-orders/{waiting[0]['id']}").json()
+    assert detail["resolution"] is None
+    assert any(entry["kind"] == "progress" for entry in detail["history"])
+    # The radiator job and the smoke detector job are both on record, with what they cost.
+    assert sorted((item["status"], item["final_cost_cents"]) for item in history) == [
+        ("closed", 4500),
+        ("completed", 18500),
+    ]
+    assert {item["currency"] for item in history} == {"USD"}

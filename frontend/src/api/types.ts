@@ -249,6 +249,9 @@ export type WorkOrderSummary = {
   assignee_id: string | null
   assignee_name: string | null
   assignment_response: AssignmentResponse | null
+  // Whole minor units (cents). Set once a manager has verified the work.
+  final_cost_cents: number | null
+  currency: string | null
   created_at: string
   updated_at: string
 }
@@ -265,6 +268,8 @@ export type EntryKind =
   | 'assignment_declined'
   | 'progress'
   | 'clarification'
+  | 'verified'
+  | 'sent_back'
 
 export type AssignmentResponse = 'pending' | 'accepted' | 'declined'
 
@@ -304,8 +309,9 @@ export type WorkOrderEntry = {
   visibility: 'resident' | 'internal'
   body: string | null
   status: WorkOrderStatus | null
-  // For edits: each changed field with its value before and after.
-  details: Record<string, [unknown, unknown]> | null
+  // For edits: each changed field with its value before and after. For a verification:
+  // the final cost and currency.
+  details: Record<string, unknown> | null
   author_name: string | null
   created_at: string
 }
@@ -328,6 +334,10 @@ export type WorkOrder = WorkOrderSummary & {
   // Every assignment the work order has had, oldest first.
   assignment_history: Assignment[]
   attachments: WorkOrderAttachment[]
+  property_currency: string
+  resolution: string | null
+  verified_by_name: string | null
+  verified_at: string | null
 }
 
 export type JobSummary = {

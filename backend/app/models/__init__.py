@@ -22,6 +22,7 @@ from app.models.user import User
 from app.models.work_orders import (
     ADMINISTRATOR_ONLY_FROM,
     FINAL_STATUSES,
+    REVIEW_MOVES,
     SYSTEM_STATUSES,
     TRANSITIONS,
     AssignmentEnd,
@@ -39,6 +40,7 @@ __all__ = [
     "ADMINISTRATOR_ONLY_FROM",
     "FINAL_STATUSES",
     "SYSTEM_STATUSES",
+    "REVIEW_MOVES",
     "TRANSITIONS",
     "AssignmentEnd",
     "AssignmentResponse",

@@ -9,6 +9,7 @@ import { BuildingsSection } from '../directory/BuildingsSection.tsx'
 import { ManagersSection } from '../directory/ManagersSection.tsx'
 import { PropertyForm } from '../directory/PropertyForm.tsx'
 import type { PropertyValues } from '../directory/property-values.ts'
+import { MaintenanceHistory } from '../review/MaintenanceHistory.tsx'
 import { UnitsSection } from '../directory/UnitsSection.tsx'
 import { addressLine } from '../format.ts'
 import { formatMoney } from '../money.ts'
@@ -142,6 +143,11 @@ function PropertyDetail({
         buildings={current.buildings}
         isAdministrator={isAdministrator}
         onChanged={reloadAll}
+      />
+      <MaintenanceHistory
+        organizationId={organizationId}
+        propertyId={propertyId}
+        units={units.data}
       />
       {isAdministrator && <ManagersSection url={`${url}/managers`} />}
     </div>

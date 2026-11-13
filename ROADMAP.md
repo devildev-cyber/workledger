@@ -32,7 +32,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 3 | Resident request intake | Residents can report issues and follow their status | 2 | 🟨 |
 | 4 | Triage and work orders | Managers turn requests into controlled work orders | 3 | ✅ |
 | 5 | Dispatch and contractor workspace | Contractors receive and carry out assigned work | 4 | 🟨 |
-| 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | ⬜ |
+| 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | 🟨 |
 | ★ | **Milestone A: core repair loop** | One repair flows from report to closure | 0–6 | ⬜ |
 | 7 | Estimates and owner approvals | Spending above a threshold requires a recorded decision | 6 | ⬜ |
 | 8 | Notifications and activity | Participants learn about actionable events without asking | 6 | ⬜ |
@@ -207,13 +207,13 @@ Phases 8 and 9 can run in parallel with Phase 7 once Milestone A is reached.
 - Maintenance history visible at the property and unit level.
 
 **Exit criteria**
-- [ ] A seeded request can travel from report to closure through the UI.
-- [ ] A closed work order shows a complete, correctly attributed timeline.
-- [ ] Monetary values are stored and displayed exactly; times are stored in UTC.
+- [ ] A seeded request can travel from report to closure through the UI. Every step is covered by tests, but it still needs one pass by hand with the demo accounts.
+- [x] A closed work order shows a complete, correctly attributed timeline.
+- [x] Monetary values are stored and displayed exactly; times are stored in UTC.
 
-**Decisions to make**
-- What evidence is required before closure.
-- Whether residents confirm the resolution or are only informed.
+**Decisions made**
+- Work ready for review is verified (with a resolution and an optional cost) or sent back (with a reason). It never changes by a plain status change ([decision 0021](docs/decisions/0021-verification-and-closure.md)).
+- Evidence is not required to close, but the review shows how many files are attached. Residents are informed, not asked to confirm ([decision 0021](docs/decisions/0021-verification-and-closure.md)).
 
 ### ★ Milestone A — Core repair loop
 

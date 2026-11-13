@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     ForeignKey,
     Index,
@@ -54,6 +55,9 @@ TRANSITIONS: dict[WorkOrderStatus, frozenset[WorkOrderStatus]] = {
     S.CLOSED: frozenset({S.IN_PROGRESS}),
     S.CANCELLED: frozenset({S.OPEN}),
 }
+# Leaving ready-for-review is a review: either the work is verified (with its resolution and
+# cost) or it is sent back (with a reason). It is never a plain status change.
+REVIEW_MOVES = frozenset({(S.READY_FOR_REVIEW, S.COMPLETED), (S.READY_FOR_REVIEW, S.IN_PROGRESS)})
 # Set by the feature that owns them (assignment in Phase 5, approvals in Phase 7), not by hand.
 SYSTEM_STATUSES = frozenset({S.ASSIGNED, S.AWAITING_APPROVAL})
 # Leaving these takes an administrator: a finished work order is reopened deliberately.
@@ -75,6 +79,9 @@ class EntryKind(enum.StrEnum):
     # What a contractor writes. A clarification is a question the manager should answer.
     PROGRESS = "progress"
     CLARIFICATION = "clarification"
+    # The manager's review of work marked ready (decision 0021).
+    VERIFIED = "verified"
+    SENT_BACK = "sent_back"
 
 
 class AssignmentResponse(enum.StrEnum):
@@ -125,6 +132,13 @@ class WorkOrder(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), default=WorkOrderStatus.OPEN)
     due_date: Mapped[date | None]
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # The outcome, set when a manager verifies the work and cleared if it is reopened. The
+    # history keeps every verification. Cost is whole minor units (cents) in `currency`.
+    resolution: Mapped[str | None] = mapped_column(Text)
+    final_cost_cents: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str | None] = mapped_column(String(3))
+    verified_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class WorkOrderEntry(TimestampMixin, Base):

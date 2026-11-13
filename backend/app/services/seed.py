@@ -25,7 +25,15 @@ from app.models import (
     Visibility,
     WorkOrderStatus,
 )
-from app.services import assignments, directory, dispatch, requests, residents, work_orders
+from app.services import (
+    assignments,
+    directory,
+    dispatch,
+    requests,
+    residents,
+    verification,
+    work_orders,
+)
 from app.services.organizations import add_membership, create_organization
 from app.services.users import create_user
 
@@ -322,21 +330,39 @@ class WorkOrderPlan:
     # A note the manager shared with the contractor, and an update the contractor wrote.
     instruction: str | None = None
     progress: str | None = None
+    # What the contractor wrote when they finished, and what the manager recorded on verifying.
+    ready_note: str | None = None
+    resolution: str | None = None
+    cost_cents: int | None = None
 
 
 _DONE = [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.READY_FOR_REVIEW, WorkOrderStatus.COMPLETED]
 WORK_ORDER_PLANS = {
-    0: WorkOrderPlan(  # faucet
-        [WorkOrderStatus.IN_PROGRESS],
+    0: WorkOrderPlan(  # faucet, waiting for the manager to verify
+        [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.READY_FOR_REVIEW],
         5,
         contractor="accepted",
         instruction="The resident works from home. Ring the bell and wait.",
-        progress="New cartridge ordered. I will fit it on Thursday morning.",
+        progress="Cartridge replaced. Checking it under pressure before I leave.",
+        ready_note="Replaced the cartridge and ran the tap for ten minutes. No leaks.",
     ),
-    2: WorkOrderPlan(_DONE, -3, contractor="accepted"),  # radiator, finished
+    2: WorkOrderPlan(  # radiator, finished and verified
+        _DONE,
+        -3,
+        contractor="accepted",
+        ready_note="Bled the radiator and replaced the stuck valve.",
+        resolution="Valve replaced and the radiator bled. Heating works in every room.",
+        cost_cents=18500,
+    ),
     5: WorkOrderPlan([WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD], 14),  # dishwasher
     7: WorkOrderPlan([], -2, contractor="pending"),  # no hot water, overdue, awaiting a reply
-    8: WorkOrderPlan([*_DONE, WorkOrderStatus.CLOSED], -20),  # smoke detector
+    8: WorkOrderPlan(  # smoke detector, closed
+        [*_DONE, WorkOrderStatus.CLOSED],
+        -20,
+        ready_note="Fitted a new battery and tested every detector.",
+        resolution="Batteries replaced in all detectors and each one tested.",
+        cost_cents=4500,
+    ),
 }
 
 
@@ -423,11 +449,37 @@ def _add_requests(
             )
             if plan.contractor == "accepted":
                 dispatch.accept(db, job, actor=users[CONTRACTOR_EMAIL])
+        property_ = db.get(Property, unit.property_id)
         for step in plan.path:
-            work_orders.change_status(
-                db, work_order, actor=admin if step == WorkOrderStatus.CLOSED else manager,
-                new_status=step, note=None, is_administrator=True,
-            )  # fmt: skip
+            if step == WorkOrderStatus.READY_FOR_REVIEW and plan.progress and job is not None:
+                dispatch.add_entry(
+                    db,
+                    job,
+                    actor=users[CONTRACTOR_EMAIL],
+                    kind=EntryKind.PROGRESS,
+                    body=plan.progress,
+                )
+            if step == WorkOrderStatus.COMPLETED:
+                verification.verify(
+                    db,
+                    work_order,
+                    actor=manager,
+                    property_=property_,
+                    resolution=plan.resolution or "Work completed",
+                    final_cost_cents=plan.cost_cents,
+                    currency=None,
+                )
+            elif step == WorkOrderStatus.READY_FOR_REVIEW and plan.contractor == "accepted":
+                dispatch.change_status(
+                    db, job, actor=users[CONTRACTOR_EMAIL], new_status=step, note=plan.ready_note
+                )
+            else:
+                work_orders.change_status(
+                    db, work_order, actor=admin if step == WorkOrderStatus.CLOSED else manager,
+                    new_status=step,
+                    note=plan.ready_note if step == WorkOrderStatus.READY_FOR_REVIEW else None,
+                    is_administrator=True,
+                )  # fmt: skip
         if plan.instruction:
             work_orders.add_note(
                 db,
@@ -436,10 +488,6 @@ def _add_requests(
                 body=plan.instruction,
                 visibility=Visibility.INTERNAL,
                 share_with_contractor=True,
-            )
-        if plan.progress and job is not None:
-            dispatch.add_entry(
-                db, job, actor=users[CONTRACTOR_EMAIL], kind=EntryKind.PROGRESS, body=plan.progress
             )
         if internal_note:
             work_orders.add_note(

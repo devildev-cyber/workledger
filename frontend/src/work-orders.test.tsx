@@ -73,6 +73,8 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     assignee_id: null,
     assignee_name: null,
     assignment_response: null,
+    final_cost_cents: null,
+    currency: null,
     created_at: '2026-11-10T10:00:00Z',
     updated_at: '2026-11-10T10:00:00Z',
     scope: 'Fit a new cartridge.',
@@ -101,6 +103,10 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     assignment: null,
     assignment_history: [],
     attachments: [],
+    property_currency: 'USD',
+    resolution: null,
+    verified_by_name: null,
+    verified_at: null,
     ...overrides,
   }
 }
@@ -114,9 +120,25 @@ function summaryOf(order: WorkOrder): WorkOrderSummary {
     assignment,
     assignment_history,
     attachments,
+    property_currency,
+    resolution,
+    verified_by_name,
+    verified_at,
     ...rest
   } = order
-  void [scope, linked_requests, history, allowed_statuses, assignment, assignment_history, attachments]
+  void [
+    scope,
+    linked_requests,
+    history,
+    allowed_statuses,
+    assignment,
+    assignment_history,
+    attachments,
+    property_currency,
+    resolution,
+    verified_by_name,
+    verified_at,
+  ]
   return rest
 }
 

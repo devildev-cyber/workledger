@@ -1,37 +1,35 @@
-import { useState, type SubmitEventHandler } from "react";
+import { useState, type SubmitEventHandler } from 'react'
 
-import { api } from "../api/client.ts";
-import { useAction } from "../api/useAction.ts";
-import { FormError } from "../components/FormError.tsx";
-import { TextAreaField } from "../components/TextAreaField.tsx";
+import { api } from '../api/client.ts'
+import { useAction } from '../api/useAction.ts'
+import { FormError } from '../components/FormError.tsx'
+import { TextAreaField } from '../components/TextAreaField.tsx'
 
 type ReplyPanelProps = {
-  url: string;
+  url: string
   // Called after a reply. Declining removes the job from this contractor, so it says which.
-  onReplied: (reply: "accepted" | "declined") => void;
-};
+  onReplied: (reply: 'accepted' | 'declined') => void
+}
 
 export function ReplyPanel({ url, onReplied }: ReplyPanelProps) {
-  const [declining, setDeclining] = useState(false);
-  const [reason, setReason] = useState("");
-  const { busy, error, run, fail } = useAction();
+  const [declining, setDeclining] = useState(false)
+  const [reason, setReason] = useState('')
+  const { busy, error, run, fail } = useAction()
 
   const accept = async () => {
-    const saved = await run(() => api(`${url}/accept`, { method: "POST" }));
-    if (saved) onReplied("accepted");
-  };
+    const saved = await run(() => api(`${url}/accept`, { method: 'POST' }))
+    if (saved) onReplied('accepted')
+  }
 
   const decline: SubmitEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
+    event.preventDefault()
     if (reason.trim().length < 3) {
-      fail("Say why you cannot take this job.");
-      return;
+      fail('Say why you cannot take this job.')
+      return
     }
-    const saved = await run(() =>
-      api(`${url}/decline`, { method: "POST", body: { reason } }),
-    );
-    if (saved) onReplied("declined");
-  };
+    const saved = await run(() => api(`${url}/decline`, { method: 'POST', body: { reason } }))
+    if (saved) onReplied('declined')
+  }
 
   return (
     <section
@@ -42,11 +40,7 @@ export function ReplyPanel({ url, onReplied }: ReplyPanelProps) {
         Can you take this job?
       </h2>
       {declining ? (
-        <form
-          onSubmit={decline}
-          aria-label="Decline the job"
-          className="space-y-3"
-        >
+        <form onSubmit={decline} aria-label="Decline the job" className="space-y-3">
           <FormError message={error} />
           <TextAreaField
             id="decline-reason"
@@ -96,5 +90,5 @@ export function ReplyPanel({ url, onReplied }: ReplyPanelProps) {
         </div>
       )}
     </section>
-  );
+  )
 }

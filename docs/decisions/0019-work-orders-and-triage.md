@@ -49,6 +49,7 @@ Statuses: open, assigned, in progress, on hold, awaiting approval, ready for rev
 
 - `assigned` is set by dispatch ([decision 0020](0020-dispatch-and-contractor-access.md)) and `awaiting approval` belongs to Phase 7. Neither can be set by hand.
 - Leaving `closed` or `cancelled` needs an administrator (`403` for a manager). Everything else is open to managers at the property.
+- Leaving `ready for review` is a review, not a plain status change ([decision 0021](0021-verification-and-closure.md)).
 - A move the table does not allow is refused with `409` and an explanation. Every check runs before anything is changed, so a refused move leaves the work order, its history, its requests, and the activity log exactly as they were.
 - A closed or cancelled work order cannot be edited until an administrator reopens it.
 

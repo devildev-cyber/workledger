@@ -92,6 +92,18 @@ A work order as a contractor sees it: only the details needed to do the work, an
 **Ready for review**
 The status a contractor sets when the work is done, with a note describing what was done. The manager decides whether it is complete.
 
+**Verification**
+A manager's review of work that is ready for review: either *verify* it (recording the resolution and optional final cost, which completes the work order) or *send it back* with a reason ([decision 0021](decisions/0021-verification-and-closure.md)).
+
+**Resolution**
+The manager's record of what was actually done, written when work is verified. Staff only.
+
+**Final cost**
+What the work cost, recorded when it is verified as an exact amount in whole cents with a currency. Optional, and staff only.
+
+**Maintenance history**
+The verified work at a property, or at one unit, with its cost.
+
 **Estimate**
 A contractor's expected cost for a work order, recorded as an exact amount with a currency.
 

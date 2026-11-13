@@ -1,68 +1,59 @@
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from 'react-router'
 
-import type { Job } from "../api/types.ts";
-import { useApiData } from "../api/useApiData.ts";
-import { useCurrentUser } from "../auth/auth-context.ts";
-import { FileList } from "../dispatch/FileList.tsx";
-import { ResponseBadge } from "../dispatch/ResponseBadge.tsx";
-import { addressLine, formatDay } from "../format.ts";
-import { EntryForm } from "../jobs/EntryForm.tsx";
-import { FINISHED } from "../jobs/labels.ts";
-import { ReplyPanel } from "../jobs/ReplyPanel.tsx";
-import { StatusActions } from "../jobs/StatusActions.tsx";
-import { Timeline } from "../jobs/Timeline.tsx";
-import {
-  findMembership,
-  isContractor,
-  myJobsPath,
-} from "../organizations/organizations.ts";
-import { CATEGORY_LABELS, URGENCY_SHORT } from "../requests/labels.ts";
-import { UploadForm } from "../requests/UploadForm.tsx";
-import { WorkOrderStatusBadge } from "../workorders/WorkOrderStatusBadge.tsx";
-import { NotFoundPage } from "./NotFoundPage.tsx";
+import type { Job } from '../api/types.ts'
+import { useApiData } from '../api/useApiData.ts'
+import { useCurrentUser } from '../auth/auth-context.ts'
+import { FileList } from '../dispatch/FileList.tsx'
+import { ResponseBadge } from '../dispatch/ResponseBadge.tsx'
+import { addressLine, formatDay } from '../format.ts'
+import { EntryForm } from '../jobs/EntryForm.tsx'
+import { FINISHED } from '../jobs/labels.ts'
+import { ReplyPanel } from '../jobs/ReplyPanel.tsx'
+import { StatusActions } from '../jobs/StatusActions.tsx'
+import { Timeline } from '../jobs/Timeline.tsx'
+import { findMembership, isContractor, myJobsPath } from '../organizations/organizations.ts'
+import { CATEGORY_LABELS, URGENCY_SHORT } from '../requests/labels.ts'
+import { UploadForm } from '../requests/UploadForm.tsx'
+import { WorkOrderStatusBadge } from '../workorders/WorkOrderStatusBadge.tsx'
+import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function JobPage() {
-  const user = useCurrentUser();
-  const { organizationId, workOrderId } = useParams();
-  const membership = findMembership(user, organizationId);
+  const user = useCurrentUser()
+  const { organizationId, workOrderId } = useParams()
+  const membership = findMembership(user, organizationId)
 
   if (!membership || !workOrderId || !isContractor(membership.roles)) {
-    return <NotFoundPage />;
+    return <NotFoundPage />
   }
 
-  return (
-    <JobDetail
-      organizationId={membership.organization_id}
-      workOrderId={workOrderId}
-    />
-  );
+  return <JobDetail organizationId={membership.organization_id} workOrderId={workOrderId} />
 }
 
 function JobDetail({
   organizationId,
   workOrderId,
 }: {
-  organizationId: string;
-  workOrderId: string;
+  organizationId: string
+  workOrderId: string
 }) {
-  const navigate = useNavigate();
-  const apiUrl = `/organizations/${organizationId}/my-jobs/${workOrderId}`;
-  const { data: job, error, loading, reload } = useApiData<Job>(apiUrl);
+  const navigate = useNavigate()
+  const apiUrl = `/organizations/${organizationId}/my-jobs/${workOrderId}`
+  const { data: job, error, loading, reload } = useApiData<Job>(apiUrl)
 
   if (loading) {
     return (
       <p role="status" className="text-slate-600">
         Loading job…
       </p>
-    );
+    )
   }
   // The same answer for a job that is someone else's and one that does not exist.
   if (error || !job) {
-    return <NotFoundPage />;
+    return <NotFoundPage />
   }
 
-  const accepted = job.response === "accepted";
-  const finished = FINISHED.includes(job.status);
+  const accepted = job.response === 'accepted'
+  const finished = FINISHED.includes(job.status)
 
   return (
     <div className="space-y-8">
@@ -90,8 +81,8 @@ function JobDetail({
         <ReplyPanel
           url={apiUrl}
           onReplied={(reply) => {
-            if (reply === "declined") void navigate(myJobsPath(organizationId));
-            else reload();
+            if (reply === 'declined') void navigate(myJobsPath(organizationId))
+            else reload()
           }}
         />
       )}
@@ -104,8 +95,8 @@ function JobDetail({
           <dt className="text-slate-600">Where</dt>
           <dd>
             {job.unit_label
-              ? `${job.building_name ? `${job.building_name} · ` : ""}${job.unit_label}, `
-              : ""}
+              ? `${job.building_name ? `${job.building_name} · ` : ''}${job.unit_label}, `
+              : ''}
             {job.property_name}
             <span className="block text-slate-700">{addressLine(job)}</span>
           </dd>
@@ -114,11 +105,11 @@ function JobDetail({
           <dt className="text-slate-600">Priority</dt>
           <dd>{URGENCY_SHORT[job.priority]}</dd>
           <dt className="text-slate-600">Due date</dt>
-          <dd>{job.due_date ? formatDay(job.due_date) : "Not set"}</dd>
+          <dd>{job.due_date ? formatDay(job.due_date) : 'Not set'}</dd>
           {accepted && job.residents.length > 0 && (
             <>
               <dt className="text-slate-600">Resident</dt>
-              <dd>{job.residents.join(", ")}</dd>
+              <dd>{job.residents.join(', ')}</dd>
             </>
           )}
           {accepted && job.access_notes.length > 0 && (
@@ -137,13 +128,12 @@ function JobDetail({
         <p className="whitespace-pre-wrap">{job.scope}</p>
         {!accepted && (
           <p className="text-sm text-slate-600">
-            The resident’s name and entry instructions appear once you accept
-            the job.
+            The resident’s name and entry instructions appear once you accept the job.
           </p>
         )}
         <p className="text-sm text-slate-600">
-          Questions for the resident go through the property team. Use “Question
-          for the property team” below.
+          Questions for the resident go through the property team. Use “Question for the property
+          team” below.
         </p>
       </section>
 
@@ -162,9 +152,7 @@ function JobDetail({
           files={job.attachments}
           baseUrl={`${apiUrl}/attachments`}
           note={(file) =>
-            job.attachments.find((item) => item.id === file.id)?.mine
-              ? "Yours"
-              : null
+            job.attachments.find((item) => item.id === file.id)?.mine ? 'Yours' : null
           }
         />
         {accepted && !finished && (
@@ -181,10 +169,8 @@ function JobDetail({
           Updates
         </h2>
         <Timeline entries={job.timeline} />
-        {accepted && !finished && (
-          <EntryForm url={`${apiUrl}/entries`} onSaved={reload} />
-        )}
+        {accepted && !finished && <EntryForm url={`${apiUrl}/entries`} onSaved={reload} />}
       </section>
     </div>
-  );
+  )
 }

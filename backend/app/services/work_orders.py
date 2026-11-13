@@ -11,6 +11,7 @@ from app.core.permissions import PropertyScope
 from app.models import (
     ADMINISTRATOR_ONLY_FROM,
     FINAL_STATUSES,
+    REVIEW_MOVES,
     SYSTEM_STATUSES,
     TRANSITIONS,
     AssignmentEnd,
@@ -87,7 +88,8 @@ def allowed_next_statuses(
     """What this person can move the work order to by hand, in a stable order."""
     if current in ADMINISTRATOR_ONLY_FROM and not is_administrator:
         return []
-    reachable = TRANSITIONS[current] - SYSTEM_STATUSES
+    reviewed = {new for old, new in REVIEW_MOVES if old == current}
+    reachable = TRANSITIONS[current] - SYSTEM_STATUSES - reviewed
     return [status for status in WorkOrderStatus if status in reachable]
 
 
@@ -275,10 +277,12 @@ def change_status(
     note: str | None,
     is_administrator: bool,
     system: bool = False,
+    review: bool = False,
 ) -> None:
     """Move a work order along its lifecycle.
 
     `system` is for dispatch, which sets the assigned status as a side effect of assigning.
+    `review` is for verification, which verifies or sends back work that is ready for review.
 
     Every check happens before anything is changed, so a refused move leaves the work order,
     its history, and its requests exactly as they were.
@@ -290,9 +294,24 @@ def change_status(
         raise WorkOrderError(f"A work order cannot move from {current.value} to {new_status.value}")
     if new_status in SYSTEM_STATUSES and not system:
         raise WorkOrderError("That status is set automatically by assignment and approvals")
+    if (current, new_status) in REVIEW_MOVES and not review:
+        raise WorkOrderError(
+            "Work that is ready for review is verified, or sent back with a reason"
+        )
     if current in ADMINISTRATOR_ONLY_FROM and not is_administrator:
         raise NotPermittedError("Only an administrator can reopen a finished work order")
+    if new_status == WorkOrderStatus.CLOSED and not work_order.resolution:
+        raise WorkOrderError("Verify the work before closing the work order")
 
+    if current in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED) and (
+        new_status == WorkOrderStatus.IN_PROGRESS
+    ):
+        # Reopened: the old outcome no longer applies. The history keeps what was recorded.
+        work_order.resolution = None
+        work_order.final_cost_cents = None
+        work_order.currency = None
+        work_order.verified_by_user_id = None
+        work_order.verified_at = None
     work_order.status = new_status
     work_order.updated_at = utc_now()
     add_entry(
@@ -452,6 +471,8 @@ def list_for_staff(
     open_only: bool = False,
     priority: Urgency | None = None,
     property_id: uuid.UUID | None = None,
+    unit_id: uuid.UUID | None = None,
+    history_only: bool = False,
     search: str | None = None,
     older_than_days: int | None = None,
     assignee_id: uuid.UUID | None = None,
@@ -476,6 +497,13 @@ def list_for_staff(
         statement = statement.where(WorkOrder.priority == priority)
     if property_id is not None:
         statement = statement.where(WorkOrder.property_id == property_id)
+    if unit_id is not None:
+        statement = statement.where(WorkOrder.unit_id == unit_id)
+    if history_only:
+        # Maintenance history is work that was done: verified, and possibly closed.
+        statement = statement.where(
+            WorkOrder.status.in_([WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED])
+        )
     if older_than_days is not None:
         statement = statement.where(
             WorkOrder.created_at <= utc_now() - timedelta(days=older_than_days)

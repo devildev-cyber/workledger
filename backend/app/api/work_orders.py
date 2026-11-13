@@ -11,7 +11,9 @@ from app.schemas.work_orders import (
     AssignmentOut,
     LinkedRequestOut,
     NoteIn,
+    SendBackIn,
     StatusChangeIn,
+    VerifyIn,
     WorkOrderAttachmentOut,
     WorkOrderEditIn,
     WorkOrderEntryOut,
@@ -19,7 +21,15 @@ from app.schemas.work_orders import (
     WorkOrderOut,
     WorkOrderSummaryOut,
 )
-from app.services import attachments, directory, dispatch, requests, residents, work_orders
+from app.services import (
+    attachments,
+    directory,
+    dispatch,
+    requests,
+    residents,
+    verification,
+    work_orders,
+)
 from app.services.work_orders import NotPermittedError, WorkOrderError, WorkOrderRow
 
 router = APIRouter(prefix="/organizations/{organization_id}", tags=["work orders"])
@@ -63,6 +73,8 @@ def _summary(
         assignee_id=assignee.assignment.contractor_membership_id if assignee else None,
         assignee_name=assignee.name if assignee else None,
         assignment_response=assignee.assignment.response if assignee else None,
+        final_cost_cents=work_order.final_cost_cents,
+        currency=work_order.currency,
         created_at=work_order.created_at,
         updated_at=work_order.updated_at,
     )
@@ -85,6 +97,11 @@ def build_work_order(
             select(User).where(User.id.in_({item.uploaded_by_user_id for item in files}))
         )
     }
+    verifier = (
+        db.get(User, row.work_order.verified_by_user_id)
+        if row.work_order.verified_by_user_id
+        else None
+    )
     return WorkOrderOut(
         **_summary(row, len(linked), assignee).model_dump(),
         scope=row.work_order.scope,
@@ -127,6 +144,10 @@ def build_work_order(
             )
             for item in files
         ],
+        property_currency=row.property.currency,
+        resolution=row.work_order.resolution,
+        verified_by_name=verifier.full_name if verifier else None,
+        verified_at=row.work_order.verified_at,
         allowed_statuses=work_orders.allowed_next_statuses(
             current, is_administrator=_is_administrator(context)
         ),
@@ -169,6 +190,8 @@ def list_work_orders(
     open_only: bool = False,
     priority: Urgency | None = None,
     property_id: uuid.UUID | None = None,
+    unit_id: uuid.UUID | None = None,
+    history_only: bool = False,
     q: Annotated[str | None, Query(max_length=100)] = None,
     older_than_days: Annotated[int | None, Query(ge=0, le=3650)] = None,
     assignee_id: uuid.UUID | None = None,
@@ -182,6 +205,8 @@ def list_work_orders(
         open_only=open_only,
         priority=priority,
         property_id=property_id,
+        unit_id=unit_id,
+        history_only=history_only,
         search=q,
         older_than_days=older_than_days,
         assignee_id=assignee_id,
@@ -259,6 +284,40 @@ def change_work_order_status(
             note=body.note,
             is_administrator=_is_administrator(context),
         )
+    except WorkOrderError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return build_work_order(db, context, work_order_id)
+
+
+@router.post("/work-orders/{work_order_id}/verify")
+def verify_work_order(
+    work_order_id: uuid.UUID, body: VerifyIn, context: StaffContext, db: DbSession
+) -> WorkOrderOut:
+    row = _get(db, context, work_order_id)
+    try:
+        verification.verify(
+            db,
+            row.work_order,
+            actor=context.user,
+            property_=row.property,
+            resolution=body.resolution,
+            final_cost_cents=body.final_cost_cents,
+            currency=body.currency,
+        )
+    except WorkOrderError as error:
+        raise _refuse(error) from error
+    db.commit()
+    return build_work_order(db, context, work_order_id)
+
+
+@router.post("/work-orders/{work_order_id}/send-back")
+def send_back_work_order(
+    work_order_id: uuid.UUID, body: SendBackIn, context: StaffContext, db: DbSession
+) -> WorkOrderOut:
+    row = _get(db, context, work_order_id)
+    try:
+        verification.send_back(db, row.work_order, actor=context.user, reason=body.reason)
     except WorkOrderError as error:
         raise _refuse(error) from error
     db.commit()

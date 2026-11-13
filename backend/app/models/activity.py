@@ -44,6 +44,8 @@ class EventType(enum.StrEnum):
     WORK_ORDER_UNASSIGNED = "work_order.unassigned"
     WORK_ORDER_ASSIGNMENT_RESPONDED = "work_order.assignment_responded"
     WORK_ORDER_ATTACHMENT_ADDED = "work_order.attachment_added"
+    WORK_ORDER_VERIFIED = "work_order.verified"
+    WORK_ORDER_SENT_BACK = "work_order.sent_back"
 
 
 class ActivityEventImmutableError(Exception):

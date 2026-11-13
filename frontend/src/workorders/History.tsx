@@ -1,5 +1,6 @@
 import type { WorkOrderEntry } from '../api/types.ts'
 import { formatDate, formatDay } from '../format.ts'
+import { formatMoney } from '../money.ts'
 import { CATEGORY_LABELS, URGENCY_SHORT } from '../requests/labels.ts'
 import { ENTRY_HEADLINES, FIELD_LABELS, WORK_ORDER_STATUS_LABELS } from './labels.ts'
 
@@ -34,14 +35,28 @@ export function History({ entries }: { entries: WorkOrderEntry[] }) {
             )}
           </p>
           {entry.body && <p className="whitespace-pre-wrap text-sm text-slate-800">{entry.body}</p>}
-          {entry.details && (
+          {entry.kind === 'verified' && entry.details && (
+            <p className="text-sm text-slate-800">
+              Final cost:{' '}
+              {typeof entry.details.final_cost_cents === 'number' &&
+              typeof entry.details.currency === 'string'
+                ? formatMoney(entry.details.final_cost_cents, entry.details.currency)
+                : 'not recorded'}
+            </p>
+          )}
+          {entry.kind === 'edited' && entry.details && (
             <ul className="text-sm text-slate-800">
-              {Object.entries(entry.details).map(([field, [before, after]]) => (
-                <li key={field}>
-                  {FIELD_LABELS[field] ?? field}:{' '}
-                  {field === 'scope' ? 'updated' : `${show(field, before)} → ${show(field, after)}`}
-                </li>
-              ))}
+              {Object.entries(entry.details).map(([field, change]) => {
+                const [before, after] = change as [unknown, unknown]
+                return (
+                  <li key={field}>
+                    {FIELD_LABELS[field] ?? field}:{' '}
+                    {field === 'scope'
+                      ? 'updated'
+                      : `${show(field, before)} → ${show(field, after)}`}
+                  </li>
+                )
+              })}
             </ul>
           )}
           <p className="text-xs text-slate-500">

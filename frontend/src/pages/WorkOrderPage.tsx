@@ -18,6 +18,8 @@ import { AssignmentPanel } from '../dispatch/AssignmentPanel.tsx'
 import { FileList } from '../dispatch/FileList.tsx'
 import { SHARE_WITH_CONTRACTOR } from '../dispatch/labels.ts'
 import { UploadForm } from '../requests/UploadForm.tsx'
+import { Outcome } from '../review/Outcome.tsx'
+import { ReviewPanel } from '../review/ReviewPanel.tsx'
 import { History } from '../workorders/History.tsx'
 import { NoteForm } from '../workorders/NoteForm.tsx'
 import { StatusControl } from '../workorders/StatusControl.tsx'
@@ -136,12 +138,25 @@ function WorkOrderDetail({
         <h2 id="status-heading" className="text-xl font-semibold">
           Status
         </h2>
-        <StatusControl
-          url={`${url}/status`}
-          allowed={workOrder.allowed_statuses}
-          onChanged={reload}
-        />
+        {workOrder.status === 'ready_for_review' ? (
+          <ReviewPanel url={url} workOrder={workOrder} onChanged={reload} />
+        ) : (
+          <StatusControl
+            url={`${url}/status`}
+            allowed={workOrder.allowed_statuses}
+            onChanged={reload}
+          />
+        )}
       </section>
+
+      {workOrder.resolution !== null && (
+        <section aria-labelledby="outcome-heading" className="space-y-3">
+          <h2 id="outcome-heading" className="text-xl font-semibold">
+            Outcome
+          </h2>
+          <Outcome workOrder={workOrder} />
+        </section>
+      )}
 
       <section aria-labelledby="contractor-heading" className="space-y-3">
         <h2 id="contractor-heading" className="text-xl font-semibold">

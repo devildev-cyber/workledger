@@ -39,10 +39,15 @@ def convert(client: SignedInClient, world: World, request_id: str, **body: Any):
 
 
 def move(client: SignedInClient, world: World, work_order_id: str, status: str, note: str = ""):
-    return client.post(
-        f"{world.base}/work-orders/{work_order_id}/status",
-        json={"status": status, "note": note or None},
-    )
+    """Change a status the way the screen does. Reviewing finished work has its own routes."""
+    url = f"{world.base}/work-orders/{work_order_id}"
+    current = client.get(url)
+    if current.status_code == 200 and current.json()["status"] == "ready_for_review":
+        if status == "completed":
+            return client.post(f"{url}/verify", json={"resolution": note or "Work checked"})
+        if status == "in_progress":
+            return client.post(f"{url}/send-back", json={"reason": note or "Please redo it"})
+    return client.post(f"{url}/status", json={"status": status, "note": note or None})
 
 
 def read_work_order(client: SignedInClient, world: World, work_order_id: str) -> dict[str, Any]:

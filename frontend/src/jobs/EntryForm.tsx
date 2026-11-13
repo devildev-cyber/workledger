@@ -1,38 +1,30 @@
-import { useState, type SubmitEventHandler } from "react";
+import { useState, type SubmitEventHandler } from 'react'
 
-import { api } from "../api/client.ts";
-import type { EntryKind } from "../api/types.ts";
-import { useAction } from "../api/useAction.ts";
-import { FormError } from "../components/FormError.tsx";
-import { SelectField } from "../components/SelectField.tsx";
-import { TextAreaField } from "../components/TextAreaField.tsx";
-import { ENTRY_CHOICES } from "./labels.ts";
+import { api } from '../api/client.ts'
+import type { EntryKind } from '../api/types.ts'
+import { useAction } from '../api/useAction.ts'
+import { FormError } from '../components/FormError.tsx'
+import { SelectField } from '../components/SelectField.tsx'
+import { TextAreaField } from '../components/TextAreaField.tsx'
+import { ENTRY_CHOICES } from './labels.ts'
 
-export function EntryForm({
-  url,
-  onSaved,
-}: {
-  url: string;
-  onSaved: () => void;
-}) {
-  const [kind, setKind] = useState<EntryKind>("progress");
-  const [body, setBody] = useState("");
-  const { busy, error, run, fail } = useAction();
+export function EntryForm({ url, onSaved }: { url: string; onSaved: () => void }) {
+  const [kind, setKind] = useState<EntryKind>('progress')
+  const [body, setBody] = useState('')
+  const { busy, error, run, fail } = useAction()
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
-    if (body.trim() === "") {
-      fail("Write something first.");
-      return;
+    event.preventDefault()
+    if (body.trim() === '') {
+      fail('Write something first.')
+      return
     }
-    const saved = await run(() =>
-      api(url, { method: "POST", body: { body, kind } }),
-    );
+    const saved = await run(() => api(url, { method: 'POST', body: { body, kind } }))
     if (saved) {
-      setBody("");
-      onSaved();
+      setBody('')
+      onSaved()
     }
-  };
+  }
 
   return (
     <form
@@ -64,5 +56,5 @@ export function EntryForm({
         Send update
       </button>
     </form>
-  );
+  )
 }
