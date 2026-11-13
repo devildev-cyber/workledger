@@ -37,3 +37,16 @@ def sign_in_as(client_factory: ClientFactory, email: str) -> SignedInClient:
     response = client.post("/api/auth/sign-in", json={"email": email, "password": PASSWORD})
     assert response.status_code == 200, response.text
     return SignedInClient(client, response.json()["csrf_token"])
+
+
+def production_settings(**overrides: Any) -> Settings:
+    """Settings that pass the production checks, for tests that need the production behaviour."""
+    values: dict[str, Any] = {
+        "environment": "production",
+        "frontend_url": "https://workledger.example",
+        "database_url": "postgresql+psycopg://workledger:secret@db/workledger",
+        "email_backend": "smtp",
+        "smtp_host": "smtp.example",
+        **overrides,
+    }
+    return Settings(_env_file=None, **values)

@@ -7,6 +7,7 @@ import { RequireAuth } from './auth/RequireAuth.tsx'
 import { AppShell } from './layout/AppShell.tsx'
 import { AcceptInvitationPage } from './pages/AcceptInvitationPage.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
+import { HelpPage } from './pages/HelpPage.tsx'
 import { HomeRedirect } from './pages/HomeRedirect.tsx'
 import { JobPage } from './pages/JobPage.tsx'
 import { MyHomePage } from './pages/MyHomePage.tsx'
@@ -15,6 +16,7 @@ import { MyRequestPage } from './pages/MyRequestPage.tsx'
 import { MyRequestsPage } from './pages/MyRequestsPage.tsx'
 import { NewRequestPage } from './pages/NewRequestPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
+import { NotificationsPage } from './pages/NotificationsPage.tsx'
 import { OrganizationHomePage } from './pages/OrganizationHomePage.tsx'
 import { PeoplePage } from './pages/PeoplePage.tsx'
 import { PropertiesPage } from './pages/PropertiesPage.tsx'
@@ -25,6 +27,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { ResidentsPage } from './pages/ResidentsPage.tsx'
 import { SignInPage } from './pages/SignInPage.tsx'
 import { WorkOrderPage } from './pages/WorkOrderPage.tsx'
+import { ReportsPage } from './pages/ReportsPage.tsx'
 import { WorkOrdersPage } from './pages/WorkOrdersPage.tsx'
 
 // The router itself is supplied by main.tsx, so tests can start at any address.
@@ -53,6 +56,8 @@ function App() {
               path="organizations/:organizationId/requests/:requestId"
               element={<RequestPage />}
             />
+            <Route path="organizations/:organizationId/help" element={<HelpPage />} />
+            <Route path="organizations/:organizationId/reports" element={<ReportsPage />} />
             <Route path="organizations/:organizationId/work-orders" element={<WorkOrdersPage />} />
             <Route
               path="organizations/:organizationId/work-orders/:workOrderId"
@@ -67,6 +72,10 @@ function App() {
             <Route
               path="organizations/:organizationId/my-approvals/:estimateId"
               element={<ApprovalPage />}
+            />
+            <Route
+              path="organizations/:organizationId/notifications"
+              element={<NotificationsPage />}
             />
             <Route path="organizations/:organizationId/my-requests" element={<MyRequestsPage />} />
             <Route

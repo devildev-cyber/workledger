@@ -1,0 +1,97 @@
+# One machine running the whole product: database, API, and the HTTPS web server.
+#
+#   cp .env.example .env     # then fill it in; see docs/operations.md
+#   docker compose up -d --build
+#
+# Only the web server is reachable from outside. The database and API have no published ports.
+name: workledger
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workledger}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-workledger}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Runs once per deploy, before the API starts. A failed migration stops the deploy.
+  migrate:
+    build: ../backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    env_file: .env
+    environment: &api-environment
+      WORKLEDGER_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-workledger}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-workledger}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment: *api-environment
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      WORKLEDGER_DOMAIN: ${WORKLEDGER_DOMAIN:-localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+  # Not started by `up`. Run on a schedule: docker compose run --rm backup
+  backup:
+    build: ../backend
+    profiles: ["tools"]
+    command: ["python", "-m", "app.ops", "backup", "--to", "/backups"]
+    env_file: .env
+    environment: *api-environment
+    volumes:
+      - uploads:/data/uploads:ro
+      - backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Not started by `up`. Used to recover; see "Restore" in docs/operations.md. Stop `api` first.
+  restore:
+    build: ../backend
+    profiles: ["tools"]
+    command: ["python", "-m", "app.ops", "restore", "--help"]
+    env_file: .env
+    environment: *api-environment
+    volumes:
+      - uploads:/data/uploads
+      - backups:/backups:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  uploads:
+  backups:
+  caddy-data:
+  caddy-config:

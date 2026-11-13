@@ -1,5 +1,5 @@
 import { useState, type SubmitEventHandler } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { api } from '../api/client.ts'
 import type { Contractor, Property, Urgency, WorkOrder, WorkOrderStatus, WorkOrderSummary } from '../api/types.ts'
@@ -30,7 +30,7 @@ export function WorkOrdersPage() {
 }
 
 type Filters = {
-  view: 'open' | 'all'
+  view: 'open' | 'all' | 'overdue' | 'blocked'
   status: WorkOrderStatus | ''
   priority: Urgency | ''
   propertyId: string
@@ -53,6 +53,7 @@ const NO_FILTERS: Filters = {
 function queryFor(filters: Filters): string {
   const params = new URLSearchParams()
   if (filters.view === 'open' && filters.status === '') params.set('open_only', 'true')
+  if (filters.view === 'overdue' || filters.view === 'blocked') params.set('attention', filters.view)
   if (filters.status) params.set('status', filters.status)
   if (filters.priority) params.set('priority', filters.priority)
   if (filters.propertyId) params.set('property_id', filters.propertyId)
@@ -66,7 +67,12 @@ function queryFor(filters: Filters): string {
 
 function WorkOrderList({ organizationId }: { organizationId: string }) {
   const navigate = useNavigate()
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+  const [searchParams] = useSearchParams()
+  const shown = searchParams.get('show')
+  const [filters, setFilters] = useState<Filters>({
+    ...NO_FILTERS,
+    view: shown === 'overdue' || shown === 'blocked' ? shown : 'open',
+  })
   const [searchText, setSearchText] = useState('')
   const [creating, setCreating] = useState(false)
   const base = `/organizations/${organizationId}/work-orders`
@@ -83,7 +89,7 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
     change({ search: searchText })
   }
 
-  const filtered = filters.search !== '' || filters.status !== '' || filters.priority !== ''
+  const filtered = filters.view === 'overdue' || filters.view === 'blocked' || filters.search !== '' || filters.status !== '' || filters.priority !== ''
     || filters.propertyId !== '' || filters.olderThan !== '' || filters.contractor !== ''
 
   return (
@@ -125,6 +131,8 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
           value={filters.view}
           options={[
             { value: 'open', label: 'Open work orders' },
+            { value: 'overdue', label: 'Overdue' },
+            { value: 'blocked', label: 'Blocked' },
             { value: 'all', label: 'All work orders' },
           ]}
           onChange={(value) => change({ view: value as Filters['view'] })}
@@ -238,6 +246,9 @@ function WorkOrderList({ organizationId }: { organizationId: string }) {
                   <td className="px-3 py-2">{URGENCY_SHORT[workOrder.priority]}</td>
                   <td className="px-3 py-2">
                     <WorkOrderStatusBadge status={workOrder.status} />
+                    {workOrder.blocked_reason && (
+                      <span className="block text-xs text-amber-800">{workOrder.blocked_reason}</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     {workOrder.assignee_name ?? '—'}

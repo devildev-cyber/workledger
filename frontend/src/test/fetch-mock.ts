@@ -13,6 +13,16 @@ type Reply = { status?: number; body?: unknown } | Error
 
 type Handler = Reply | ((request: RecordedRequest) => Reply)
 
+// Chrome that every screen loads, so tests about something else need not plan for it. A test
+// that does care can still supply its own reply for the same key.
+const SHARED_CHROME: [RegExp, unknown][] = [
+  [
+    /^GET \/api\/organizations\/[^/]+\/notifications\?unread_only=true$/,
+    { items: [], unread_count: 0 },
+  ],
+  [/^GET \/api\/organizations\/[^/]+\/work-orders\?attention=(overdue|blocked)$/, []],
+]
+
 /**
  * Replaces fetch with a fake server. Keys look like "POST /api/auth/sign-in".
  * Requests nobody planned for fail the test instead of hitting the network.
@@ -27,11 +37,13 @@ export function mockApi(routes: Record<string, Handler>) {
       headers: (init?.headers ?? {}) as Record<string, string>,
       body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
     }
-    requests.push(request)
-
-    const handler = routes[`${request.method} ${request.path}`]
+    const key = `${request.method} ${request.path}`
+    const shared = SHARED_CHROME.find(([pattern]) => pattern.test(key))
+    // Requests nobody asked about are not recorded, so tests can count what they did plan.
+    if (!shared || routes[key]) requests.push(request)
+    const handler = routes[key] ?? (shared ? { body: shared[1] } : undefined)
     if (!handler) {
-      throw new Error(`Unexpected request: ${request.method} ${request.path}`)
+      throw new Error(`Unexpected request: ${key}`)
     }
 
     const reply = typeof handler === 'function' ? handler(request) : handler
@@ -50,10 +62,7 @@ export function mockApi(routes: Record<string, Handler>) {
 export const HARBOR = { id: '11111111-1111-4111-8111-111111111111', name: 'Harbor Property Group' }
 export const ELM = { id: '22222222-2222-4222-8222-222222222222', name: 'Elm Street Rentals' }
 
-export function sessionFor(
-  memberships: Membership[],
-  csrfToken = 'csrf-123',
-): SessionResponse {
+export function sessionFor(memberships: Membership[], csrfToken = 'csrf-123'): SessionResponse {
   return {
     user: {
       id: '99999999-9999-4999-8999-999999999999',

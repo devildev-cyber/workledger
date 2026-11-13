@@ -6,6 +6,7 @@ from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from support import production_settings
 
 from app.api.deps import CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.clock import utc_now
@@ -62,7 +63,7 @@ def test_session_cookie_is_http_only_and_same_site(client: TestClient) -> None:
 def test_session_cookie_is_secure_in_production(
     client_factory: Callable[[Settings | None], TestClient],
 ) -> None:
-    production = Settings(_env_file=None, environment="production")
+    production = production_settings()
 
     response = client_factory(production).post("/api/auth/sign-in", json=CREDENTIALS)
 

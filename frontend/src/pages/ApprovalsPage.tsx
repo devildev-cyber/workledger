@@ -8,6 +8,7 @@ import { EstimateStatusBadge } from '../estimates/EstimateStatusBadge.tsx'
 import { formatDate } from '../format.ts'
 import { formatMoney } from '../money.ts'
 import { approvalsPath, findMembership, isPropertyOwner } from '../organizations/organizations.ts'
+import { OwnerSummary } from '../reports/OwnerSummary.tsx'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function ApprovalsPage() {
@@ -53,6 +54,7 @@ function ApprovalList({ organizationId }: { organizationId: string }) {
         organizationId={organizationId}
       />
       <ApprovalGroup title="Earlier estimates" items={earlier} organizationId={organizationId} />
+      <OwnerSummary organizationId={organizationId} />
     </div>
   )
 }

@@ -35,7 +35,7 @@ from app.models import (
     WorkOrderEntry,
     WorkOrderStatus,
 )
-from app.services import requests
+from app.services import notifications, requests
 from app.services.activity import record_event
 from app.services.numbering import next_number
 
@@ -87,6 +87,18 @@ def is_overdue(work_order: WorkOrder, today: date) -> bool:
         and work_order.due_date < today
         and WorkOrderStatus(work_order.status) not in FINAL_STATUSES
     )
+
+
+# Work that cannot move until someone acts. A work order is blocked while it is on hold, or
+# waiting for a property owner's decision (decision 0023).
+BLOCKED_REASONS: dict[WorkOrderStatus, str] = {
+    WorkOrderStatus.ON_HOLD: "On hold",
+    WorkOrderStatus.AWAITING_APPROVAL: "Waiting for the owner's approval",
+}
+
+
+def blocked_reason(work_order: WorkOrder) -> str | None:
+    return BLOCKED_REASONS.get(WorkOrderStatus(work_order.status))
 
 
 def approval_hold(db: Session, work_order: WorkOrder) -> str | None:
@@ -342,6 +354,8 @@ def change_status(
         work_order.currency = None
         work_order.verified_by_user_id = None
         work_order.verified_at = None
+    # Asked before a cancellation ends the assignment, so the contractor still hears of it.
+    contractor_user_id = notifications.assignee_user_id(db, work_order.id)
     work_order.status = new_status
     work_order.updated_at = utc_now()
     add_entry(
@@ -367,6 +381,53 @@ def change_status(
         # A cancelled job disappears from the contractor's list.
         end_current_assignment(db, work_order, reason=AssignmentEnd.CANCELLED)
     sync_requests(db, work_order, actor=actor)
+    _notify_status(
+        db, work_order, actor=actor, review=review, contractor_user_id=contractor_user_id
+    )
+
+
+def _notify_status(
+    db: Session,
+    work_order: WorkOrder,
+    *,
+    actor: User,
+    review: bool,
+    contractor_user_id: uuid.UUID | None,
+) -> None:
+    new_status = WorkOrderStatus(work_order.status)
+    reference = reference_for(work_order.number)
+    if not review:
+        # Verifying and sending back have their own, more specific notifications.
+        notifications.work_order_status_changed(
+            db,
+            organization_id=work_order.organization_id,
+            property_id=work_order.property_id,
+            work_order_id=work_order.id,
+            reference=reference,
+            title=work_order.title,
+            new_status=new_status,
+            contractor_user_id=contractor_user_id,
+            actor=actor,
+        )
+    if new_status == WorkOrderStatus.COMPLETED:
+        approved = db.scalar(
+            select(Estimate).where(
+                Estimate.work_order_id == work_order.id,
+                Estimate.superseded_at.is_(None),
+                Estimate.approval_required.is_(True),
+                Estimate.status == EstimateStatus.APPROVED,
+            )
+        )
+        if approved is not None:
+            notifications.approved_work_completed(
+                db,
+                organization_id=work_order.organization_id,
+                property_id=work_order.property_id,
+                estimate_id=approved.id,
+                reference=reference,
+                title=work_order.title,
+                actor=actor,
+            )
 
 
 def current_assignee_id(db: Session, work_order_id: uuid.UUID) -> uuid.UUID | None:
@@ -517,8 +578,17 @@ def list_for_staff(
     older_than_days: int | None = None,
     assignee_id: uuid.UUID | None = None,
     unassigned: bool = False,
+    attention: str | None = None,
 ) -> list[WorkOrderRow]:
     statement = select(WorkOrder).where(WorkOrder.organization_id == organization_id)
+    if attention == "overdue":
+        statement = statement.where(
+            WorkOrder.due_date.is_not(None),
+            WorkOrder.due_date < utc_now().date(),
+            WorkOrder.status.not_in(list(FINAL_STATUSES)),
+        )
+    elif attention == "blocked":
+        statement = statement.where(WorkOrder.status.in_(list(BLOCKED_REASONS)))
     current = select(WorkOrderAssignment.work_order_id).where(
         WorkOrderAssignment.ended_at.is_(None)
     )

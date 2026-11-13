@@ -28,7 +28,7 @@ from app.models import (
     WorkOrder,
     WorkOrderStatus,
 )
-from app.services import ownerships, work_orders
+from app.services import notifications, ownerships, work_orders
 from app.services.activity import record_event
 from app.services.work_orders import NotPermittedError, WorkOrderError
 
@@ -190,6 +190,16 @@ def submit(
             is_administrator=False,
             system=True,
         )
+    if required:
+        notifications.estimate_needs_decision(
+            db,
+            organization_id=work_order.organization_id,
+            property_id=work_order.property_id,
+            estimate_id=estimate.id,
+            reference=work_orders.reference_for(work_order.number),
+            title=work_order.title,
+            actor=actor,
+        )
     return estimate
 
 
@@ -256,6 +266,16 @@ def decide(
         after={**_details(estimate), "status": estimate.status, "reason": cleaned},
     )
     work_order.updated_at = now
+    notifications.estimate_decided(
+        db,
+        organization_id=work_order.organization_id,
+        property_id=work_order.property_id,
+        work_order_id=work_order.id,
+        reference=work_orders.reference_for(work_order.number),
+        approved=approve,
+        submitter_user_id=estimate.submitted_by_user_id,
+        actor=actor,
+    )
 
     if S(work_order.status) == S.AWAITING_APPROVAL:
         # Approved work carries on where it was. Rejected work stops until a manager decides.

@@ -122,6 +122,12 @@ A manager's confirmation that completed work resolves the problem.
 **Closure**
 The final state of a work order once work is verified and final costs are recorded.
 
+**Blocked**
+A work order that cannot move until someone acts: on hold, or waiting for a property owner's approval.
+
+**Overdue**
+Open work whose due date has passed. Finished work is never overdue.
+
 ## Records and visibility
 
 **Work note**
@@ -138,3 +144,33 @@ A file, such as a photo or document, attached to a request or work order, with i
 
 **Activity event**
 An entry in a record's history: who did what, when, and the relevant before and after values.
+
+**Notification**
+A short message telling one person that something needs their attention. It shows in the app, and as an email copy unless the person turned email off. It names a record by reference and title and never repeats its contents. See [decision 0023](decisions/0023-notifications-and-attention.md).
+
+**Property team**
+The managers assigned to a property, or the organization's administrators when nobody is assigned. It is who is told about events that need staff.
+
+**Report period**
+A range of whole UTC days, both ends included, that a report or export covers. The default is the last 90 days. Figures about the present, such as open requests, ignore it. See [decision 0024](decisions/0024-reports-and-exports.md).
+
+**Time to resolve**
+How long it took to put right a problem: from the resident's earliest linked request to the manager's verification of the work. A work order with no request starts at its creation.
+
+**Repeat issue**
+Two or more non-cancelled work orders of the same category at the same unit (or in the same property's common areas) created within the report period.
+
+**Export**
+A CSV file of records for operational review. It holds only what the person asking may already see, and never residents' names, descriptions or notes.
+
+**Lock-out**
+A short refusal of sign-in after too many wrong passwords for one account (default 5 in 15 minutes). It ends by itself and does not mark the account. See [decision 0025](decisions/0025-production-readiness.md).
+
+**Backup**
+A folder holding the database, the uploaded files and a manifest of checksums, made by `python -m app.ops backup`. It is only a backup once it is also stored off the machine and has been restored at least once.
+
+**Housekeeping (purge)**
+Routine deletion of expired operational records, such as old sessions and reset links. It never deletes requests, work orders, files or the activity history.
+
+**Readiness check**
+`/api/health/ready`: answers whether the API can reach its database. It is what monitors and the container health check use.

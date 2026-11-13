@@ -34,3 +34,6 @@ Significant product and technical decisions, one file per decision. A decision r
 | [0020](0020-dispatch-and-contractor-access.md) | Dispatch and what a contractor can see | Accepted |
 | [0021](0021-verification-and-closure.md) | Verifying work, recording the outcome, and closing | Accepted |
 | [0022](0022-estimates-and-owner-approvals.md) | Estimates and owner approvals | Accepted |
+| [0023](0023-notifications-and-attention.md) | Notifications, blocked and overdue work, and who did what | Accepted |
+| [0024](0024-reports-and-exports.md) | Reports, metric definitions, and exports | Accepted |
+| [0025](0025-production-readiness.md) | Production readiness: hosting, hardening, backups, retention, and logging | Accepted |

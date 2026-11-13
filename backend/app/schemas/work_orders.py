@@ -9,6 +9,7 @@ from app.models import (
     EntryKind,
     RequestCategory,
     RequestStatus,
+    Role,
     Urgency,
     Visibility,
     WorkOrderStatus,
@@ -140,6 +141,9 @@ class WorkOrderSummaryOut(BaseModel):
     building_name: str | None
     due_date: date | None
     overdue: bool
+    # Set while the work order cannot move until someone acts, with the reason in words.
+    blocked: bool
+    blocked_reason: str | None
     request_count: int
     assignee_id: uuid.UUID | None
     assignee_name: str | None
@@ -166,6 +170,7 @@ class WorkOrderEntryOut(BaseModel):
     status: WorkOrderStatus | None
     details: dict[str, Any] | None
     author_name: str | None
+    author_role: Role | None
     created_at: datetime
 
 

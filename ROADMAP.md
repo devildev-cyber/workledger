@@ -35,7 +35,7 @@ This roadmap sequences the work described in [README.md](README.md) and [PROJECT
 | 6 | Verification and closure | Work is verified, costed, and closed with a lasting history | 5 | 🟨 |
 | ★ | **Milestone A: core repair loop** | One repair flows from report to closure | 0–6 | ⬜ |
 | 7 | Estimates and owner approvals | Spending above a threshold requires a recorded decision | 6 | ✅ |
-| 8 | Notifications and activity | Participants learn about actionable events without asking | 6 | ⬜ |
+| 8 | Notifications and activity | Participants learn about actionable events without asking | 6 | ✅ |
 | 9 | Reporting and export | Managers understand workload, patterns, and spend | 6, 7 | ⬜ |
 | ★ | **Milestone B: feature-complete MVP** | All capabilities in the product documents exist | 0–9 | ⬜ |
 | 10 | Production readiness | The product can be deployed and operated safely | B | ⬜ |
@@ -260,18 +260,18 @@ The full maintenance lifecycle works end to end with real permissions. Review th
 - Delivery channels behind a replaceable interface, so local development and tests need no external service.
 
 **Exit criteria**
-- [ ] Each actionable event notifies the right people and only them.
-- [ ] Notifications respect the same visibility rules as the rest of the product.
-- [ ] Tests run without any external messaging service.
+- [x] Each actionable event notifies the right people and only them.
+- [x] Notifications respect the same visibility rules as the rest of the product.
+- [x] Tests run without any external messaging service.
 
-**Decisions to make**
-- Which channels the MVP includes: in-app only, or email as well.
-- How "overdue" is defined, for example by urgency-based response targets or by due date only.
-- Whether users can set notification preferences.
+**Decisions made** ([0023](docs/decisions/0023-notifications-and-attention.md))
+- Channels: in-app always, plus an email copy through the existing replaceable sender. No SMS or push.
+- "Overdue" means a passed due date; "blocked" means on hold or waiting for an owner. Urgency-based response targets are deferred.
+- Preferences: email on or off per person per organization. In-app notifications cannot be turned off.
 
 ---
 
-## Phase 9 — Reporting and export
+## Phase 9 — Reporting and export ✅
 
 **Goal:** Managers and owners understand workload, patterns, and spending.
 
@@ -283,14 +283,15 @@ The full maintenance lifecycle works end to end with real permissions. Review th
 - Export of records for operational review.
 
 **Exit criteria**
-- [ ] Every metric has a written definition and matches seeded test data.
-- [ ] Reports respect organization, property, and role boundaries.
-- [ ] Exports contain only data the requesting user is allowed to see.
+- [x] Every metric has a written definition and matches seeded test data.
+- [x] Reports respect organization, property, and role boundaries.
+- [x] Exports contain only data the requesting user is allowed to see.
 
-**Decisions to make**
-- Metric definitions, for example whether resolution time starts at request submission or at work-order creation.
-- Export formats.
-- Which time zone reports use (data is stored in UTC; properties have local times).
+**Decisions made** ([0024](docs/decisions/0024-reports-and-exports.md))
+- Resolution time starts at the resident's earliest linked request and stops at verification.
+- Export format: CSV only, with spreadsheet-formula protection, a 20,000-row limit, and a recorded activity event per export.
+- Reports use UTC calendar days. Per-property time zones are deferred.
+- Owners see only a summary of their own approvals and their own estimates file.
 
 ### ★ Milestone B — Feature-complete MVP
 
@@ -298,7 +299,7 @@ Every capability described in the product documents exists, is tested, and is re
 
 ---
 
-## Phase 10 — Production readiness
+## Phase 10 — Production readiness (built; real staging pending)
 
 **Goal:** WorkLedger can be deployed, operated, and recovered safely.
 
@@ -313,14 +314,20 @@ Every capability described in the product documents exists, is tested, and is re
 - User-facing help for each workspace.
 
 **Exit criteria**
-- [ ] A staging environment runs the product over HTTPS.
-- [ ] A backup has been restored successfully.
-- [ ] A security review has been completed and its findings resolved or accepted.
-- [ ] Main pages stay responsive with realistic data volumes.
+- [ ] A staging environment runs the product over HTTPS. *The full stack (PostgreSQL, API, Caddy) was run from `deploy/` and answered over HTTPS with a locally issued certificate. It has not been run on a public host with a real domain. Do that first in the pilot, following [the operations guide](docs/operations.md).*
+- [x] A backup has been restored successfully. *Rehearsed on the real stack: back up, destroy data, restore, start again, and the data and files are back.*
+- [x] A security review has been completed and its findings resolved or accepted. *[A self-review](docs/security-review.md); deferred items are listed with their triggers, and an independent review is recommended before real personal data is loaded.*
+- [x] Main pages stay responsive with realistic data volumes. *[Measured at 300 units and three years of history](docs/production-review.md): every endpoint under 250 ms on SQLite and PostgreSQL.*
 
-**Decisions to make**
-- The hosting provider and the file-storage service.
-- Retention periods for closed work, attachments, and departed residents.
+**Decisions made** ([0025](docs/decisions/0025-production-readiness.md))
+- Hosting: one provider-neutral machine running Docker Compose (PostgreSQL 16, API, Caddy with automatic HTTPS). Uploads stay on a volume; an S3 store is deferred.
+- A production server refuses to start over HTTP, on SQLite, or without SMTP.
+- Sign-in and password-reset limits per account and address, stored as keyed hashes. Lock-out abuse is an accepted trade-off.
+- Logs hold no personal data. Backups are verified before restore. Operational records are purged on a schedule; business records are kept until a firm sets its own rule (a proposal, not a feature).
+
+**Also delivered:** the [operations guide](docs/operations.md), the [production review](docs/production-review.md) (performance, accessibility, responsive), a Help page for each role, a skip link, and a CI job that runs the backend tests on PostgreSQL.
+
+**Deferred:** real staging on a public domain, S3 file storage, virus scanning and photo-metadata removal, pagination of lists, two-factor sign-in, supported anonymisation of a person, per-property time zones, dependency-audit automation.
 
 ### ★ Milestone C — Pilot
 

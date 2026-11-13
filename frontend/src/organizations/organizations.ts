@@ -108,3 +108,13 @@ export function isPropertyOwner(roles: Role[]): boolean {
 export function approvalsPath(organizationId: string): string {
   return `${organizationPath(organizationId)}/my-approvals`
 }
+
+export function notificationsPath(organizationId: string): string {
+  return `${organizationPath(organizationId)}/notifications`
+}
+
+/** Who did something, with the role they acted in, so a name is never ambiguous. */
+export function authorLabel(name: string | null, role: Role | null | undefined): string {
+  if (name === null) return 'System'
+  return role ? `${name} (${roleLabel(role)})` : name
+}

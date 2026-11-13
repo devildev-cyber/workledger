@@ -4,6 +4,7 @@ import type { StaffRequest } from '../api/types.ts'
 import { useApiData } from '../api/useApiData.ts'
 import { useCurrentUser } from '../auth/auth-context.ts'
 import {
+  authorLabel,
   canSeeDirectory,
   findMembership,
   requestsPath,
@@ -152,7 +153,7 @@ function StaffRequestDetail({
             body: entry.body,
             status: entry.status,
             created_at: entry.created_at,
-            who: entry.author_name ?? 'System',
+            who: authorLabel(entry.author_name, entry.author_role),
             internal: entry.visibility === 'internal',
           }))}
         />

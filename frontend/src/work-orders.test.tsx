@@ -69,6 +69,8 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     building_name: 'Building A',
     due_date: '2026-12-01',
     overdue: false,
+    blocked: false,
+    blocked_reason: null,
     request_count: 1,
     assignee_id: null,
     assignee_name: null,
@@ -96,6 +98,7 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
         status: 'open',
         details: null,
         author_name: 'Mo Manager',
+        author_role: null,
         created_at: '2026-11-10T10:00:00Z',
       },
     ],
@@ -378,7 +381,7 @@ describe('work order list', () => {
     const link = await screen.findByRole('link', { name: 'Replace kitchen tap' })
     expect(link).toHaveAttribute('href', `${ORG_PATH}/work-orders/w-1`)
     expect(screen.getByText('WO-0002')).toBeInTheDocument()
-    expect(screen.getAllByText('Overdue')).toHaveLength(1)
+    expect(screen.getAllByText('Overdue', { selector: 'span' })).toHaveLength(1)
   })
 
   it('sends filters and search to the server', async () => {
@@ -643,6 +646,7 @@ describe('work order page', () => {
               status: 'in_progress',
               details: null,
               author_name: 'Mo Manager',
+              author_role: null,
               created_at: '2026-11-11T10:00:00Z',
             },
             {
@@ -653,6 +657,7 @@ describe('work order page', () => {
               status: null,
               details: { priority: ['soon', 'urgent'], due_date: [null, '2026-12-01'] },
               author_name: 'Mo Manager',
+              author_role: null,
               created_at: '2026-11-12T10:00:00Z',
             },
             {
@@ -663,6 +668,7 @@ describe('work order page', () => {
               status: null,
               details: null,
               author_name: 'Mo Manager',
+              author_role: null,
               created_at: '2026-11-12T11:00:00Z',
             },
             {
@@ -673,6 +679,7 @@ describe('work order page', () => {
               status: null,
               details: null,
               author_name: null,
+              author_role: null,
               created_at: '2026-11-12T12:00:00Z',
             },
           ],

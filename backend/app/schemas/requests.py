@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.models import (
     RequestCategory,
     RequestStatus,
+    Role,
     UpdateKind,
     Urgency,
     Visibility,
@@ -112,6 +113,8 @@ class StaffTimelineEntryOut(BaseModel):
     status: RequestStatus | None
     created_at: datetime
     author_name: str | None
+    # The role the author acted in, so staff can tell a manager from the resident.
+    author_role: Role | None
 
 
 class RequesterOut(BaseModel):

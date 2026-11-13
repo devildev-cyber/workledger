@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.db
+backend/uploads
+backend/outbox

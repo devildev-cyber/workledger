@@ -207,6 +207,7 @@ export type StaffTimelineEntry = {
   status: RequestStatus | null
   created_at: string
   author_name: string | null
+  author_role: Role | null
 }
 
 export type StaffRequest = StaffRequestSummary & {
@@ -239,6 +240,9 @@ export type WorkOrderSummary = {
   building_name: string | null
   due_date: string | null
   overdue: boolean
+  // Waiting for someone to act (on hold, or for the owner's approval), with the reason.
+  blocked: boolean
+  blocked_reason: string | null
   request_count: number
   assignee_id: string | null
   assignee_name: string | null
@@ -310,6 +314,7 @@ export type WorkOrderEntry = {
   // the final cost and currency.
   details: Record<string, unknown> | null
   author_name: string | null
+  author_role: Role | null
   created_at: string
 }
 
@@ -474,4 +479,109 @@ export type Job = JobSummary & {
   allowed_statuses: WorkOrderStatus[]
   timeline: JobEntry[]
   attachments: JobAttachment[]
+}
+
+export type AppNotification = {
+  id: string
+  kind: string
+  title: string
+  // Where the notification leads, for the person reading it.
+  path: string
+  read: boolean
+  created_at: string
+}
+
+export type NotificationList = {
+  items: AppNotification[]
+  unread_count: number
+}
+
+export type NotificationPreferences = {
+  email_enabled: boolean
+}
+
+export type CurrencyTotal = { currency: string; total_cents: number }
+
+export type ApprovalMetrics = {
+  estimates_recorded: number
+  needed_approval: number
+  pending: number
+  approved: number
+  rejected: number
+  replaced: number
+  pending_amounts: CurrencyTotal[]
+  approved_amounts: CurrencyTotal[]
+  rejected_amounts: CurrencyTotal[]
+  average_decision_hours: number | null
+  by_property: {
+    property_id: string
+    property_name: string
+    needed_approval: number
+    pending: number
+    approved: number
+    rejected: number
+  }[]
+}
+
+export type Report = {
+  period_start: string
+  period_end: string
+  requests: {
+    open: number
+    waiting_for_triage: number
+    submitted_in_period: number
+    by_status: Record<string, number>
+  }
+  work_orders: {
+    by_status: Record<string, number>
+    open: number
+    overdue: number
+    blocked: number
+    created_in_period: number
+    created_by_category: Record<string, number>
+    created_by_property: { property_id: string; property_name: string; count: number }[]
+  }
+  resolution: {
+    completed: number
+    average_hours: number | null
+    slowest_hours: number | null
+    by_priority: { priority: string; completed: number; average_hours: number | null }[]
+  }
+  contractors: {
+    contractor_id: string
+    name: string
+    active_jobs: number
+    awaiting_response: number
+    overdue: number
+    completed: number
+    sent_back: number
+    declined: number
+  }[]
+  repeat_issues: {
+    property_id: string
+    property_name: string
+    unit_label: string | null
+    category: string
+    count: number
+    references: string[]
+  }[]
+  spend: {
+    work_orders: number
+    total: CurrencyTotal[]
+    by_property: {
+      property_id: string
+      property_name: string
+      currency: string
+      total_cents: number
+      work_orders: number
+    }[]
+    by_category: { category: string; currency: string; total_cents: number }[]
+  }
+  approvals: ApprovalMetrics
+}
+
+export type OwnerSummary = {
+  period_start: string
+  period_end: string
+  approvals: ApprovalMetrics
 }

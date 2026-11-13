@@ -1,3 +1,6 @@
+import os
+
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, inspect, text
@@ -12,5 +15,9 @@ def test_models_match_migrations(alembic_config: Config, migrated_engine: Engine
     command.check(alembic_config)
 
 
+@pytest.mark.skipif(
+    bool(os.environ.get("WORKLEDGER_TEST_DATABASE_URL")),
+    reason="SQLite only: PostgreSQL always enforces foreign keys",
+)
 def test_sqlite_enforces_foreign_keys(db_session: Session) -> None:
     assert db_session.execute(text("PRAGMA foreign_keys")).scalar_one() == 1

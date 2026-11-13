@@ -161,6 +161,8 @@ A maintenance request records the resident's report. A work order records the op
 - [Roadmap](ROADMAP.md): delivery phases, exit criteria, and open questions
 - [Glossary](docs/glossary.md): shared product vocabulary
 - [Decision log](docs/decisions/README.md): significant decisions and their reasons
+- [Operations guide](docs/operations.md): deploying, backing up, restoring, monitoring, and incidents
+- [Security review](docs/security-review.md) and [production review](docs/production-review.md): findings and what is still open
 
 ## Local development
 
@@ -245,7 +247,18 @@ To explore a filled-in system, load the synthetic demo organization (a separate 
 python -m app.seed
 ```
 
-It creates "Harbor Demo Properties" with three properties, 24 units, 18 residents, 10 maintenance requests (five waiting for triage and five already turned into work orders in different statuses, three of them assigned to the demo contractor, one waiting for the manager to verify, one held for the demo property owner's approval of a heater quote and one whose replacement the owner already approved), plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The command refuses to run twice.
+It creates "Harbor Demo Properties" with three properties, 24 units, 18 residents, 10 maintenance requests (five waiting for triage and five already turned into work orders in different statuses, three of them assigned to the demo contractor, one waiting for the manager to verify, one held for the demo property owner's approval of a heater quote and one whose replacement the owner already approved), plus sign-ins for each role (`admin@demo.example`, `manager@demo.example`, `resident@demo.example`, `contractor@demo.example`, `owner@demo.example`). One random password is printed once, so note it down. All names, emails, and phone numbers are invented. The data also shows what the later phases do: one overdue and two blocked work orders appear under *Needs attention* for the manager, assigning and verifying work creates notifications, and *Reports* has figures for every metric (open work, time to resolve, contractor workload, spend and approvals) with CSV exports. The command refuses to run twice.
+
+## Deploying
+
+```bash
+cd deploy
+cp .env.example .env        # fill in the domain, secrets and SMTP details
+docker compose up -d --build
+docker compose --profile tools run --rm backup      # a backup, any time
+```
+
+Restore, scheduling, monitoring and incident steps are in [the operations guide](docs/operations.md).
 
 ## Tests and code quality
 
@@ -263,6 +276,8 @@ npm test
 npm run build
 ```
 
+To run the backend tests on PostgreSQL instead of SQLite, set `WORKLEDGER_TEST_DATABASE_URL` to a throwaway database; see [the operations guide](docs/operations.md#tests-on-postgresql). CI does this on every pull request (a subset) and weekly (everything).
+
 Test coverage prioritizes tenant isolation, role permissions, assignment validation, status transitions, request visibility, audit events, and failure-path transaction integrity. The test suite uses its own disposable data and does not require an external service.
 
 ## Design principles
@@ -275,5 +290,5 @@ Test coverage prioritizes tenant isolation, role permissions, assignment validat
 
 ## Security and data handling
 
-Use environment-based secrets, hashed passwords, HTTP-only session cookies, explicit authorization checks, request validation, controlled uploads, and safe error responses. Never store real tenant personal data in demo fixtures. Deployment requires HTTPS, session hardening, backup and retention policies, and operational monitoring.
+Use environment-based secrets, hashed passwords, HTTP-only session cookies, explicit authorization checks, request validation, controlled uploads, and safe error responses. Never store real tenant personal data in demo fixtures. A production server refuses to start over plain HTTP, on SQLite, or without real email. Sign-in and password-reset attempts are limited, logs hold no personal data, and backups are verified before they are restored. Deployment uses `deploy/` (Docker Compose with PostgreSQL and automatic HTTPS) and is described in [the operations guide](docs/operations.md).
 

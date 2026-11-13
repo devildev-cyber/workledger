@@ -6,12 +6,15 @@ owner never receives the internal record: no notes, history, residents, files, o
 """
 
 import uuid
+from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.access import OrganizationContext, require_roles
 from app.api.deps import DbSession
+from app.api.reports import download, resolve_period
+from app.core.permissions import PropertyScope
 from app.models import Role
 from app.schemas.estimates import (
     ApprovalOut,
@@ -19,7 +22,8 @@ from app.schemas.estimates import (
     ApprovalVersionOut,
     DecisionIn,
 )
-from app.services import estimates, ownerships
+from app.schemas.reports import OwnerSummaryOut
+from app.services import estimates, exports, ownerships, reports
 from app.services.estimates import OwnerRow
 from app.services.work_orders import NotPermittedError, WorkOrderError, reference_for
 
@@ -118,6 +122,47 @@ def list_approvals(context: OwnerContext, db: DbSession) -> list[ApprovalSummary
         db, organization_id=context.organization.id, property_ids=_owned(db, context)
     )
     return [ApprovalSummaryOut(**_summary_fields(row, context)) for row in rows]
+
+
+StartDate = Annotated[date | None, Query(alias="from")]
+EndDate = Annotated[date | None, Query(alias="to")]
+
+
+@router.get("/summary")
+def read_summary(
+    context: OwnerContext, db: DbSession, start: StartDate = None, end: EndDate = None
+) -> OwnerSummaryOut:
+    """The owner's own approval activity. Spending and the rest of the report stay with staff."""
+    period = resolve_period(start, end)
+    scope = PropertyScope(unrestricted=False, property_ids=_owned(db, context))
+    return OwnerSummaryOut(
+        period_start=period.start,
+        period_end=period.end,
+        approvals=reports.approval_metrics(
+            db,
+            organization_id=context.organization.id,
+            scope=scope,
+            period=period,
+            property_id=None,
+        ),
+    )
+
+
+@router.get("/export.csv")
+def export_estimates(
+    context: OwnerContext, db: DbSession, start: StartDate = None, end: EndDate = None
+) -> Response:
+    period = resolve_period(start, end)
+    owned = _owned(db, context)
+    return download(
+        "approvals",
+        period,
+        context,
+        db,
+        lambda: exports.owner_estimates_csv(
+            db, organization_id=context.organization.id, property_ids=owned, period=period
+        ),
+    )
 
 
 @router.get("/{estimate_id}")

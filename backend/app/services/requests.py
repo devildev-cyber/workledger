@@ -26,11 +26,22 @@ from app.models import (
     User,
     Visibility,
 )
+from app.services import notifications
 from app.services.activity import record_event
 from app.services.numbering import next_number
 
 REFERENCE_PREFIX = "REQ-"
 LIST_LIMIT = 200
+# How a status reads in "Your request REQ-0001 is now ...".
+STATUS_WORDS: dict[RequestStatus, str] = {
+    RequestStatus.SUBMITTED: "submitted",
+    RequestStatus.IN_REVIEW: "being reviewed",
+    RequestStatus.IN_PROGRESS: "in progress",
+    RequestStatus.RESOLVED: "resolved",
+    RequestStatus.CLOSED: "closed",
+    RequestStatus.CANCELLED: "cancelled",
+    RequestStatus.DECLINED: "declined",
+}
 
 
 class RequestError(Exception):
@@ -113,6 +124,17 @@ def create_request(
             "on_behalf": on_behalf,
         },
     )
+    notifications.request_submitted(
+        db,
+        organization_id=organization_id,
+        property_id=request.property_id,
+        request_id=request.id,
+        reference=reference_for(request.number),
+        title=request.title,
+        resident_id=resident.id,
+        on_behalf=on_behalf,
+        actor=actor,
+    )
     return request
 
 
@@ -168,6 +190,8 @@ def post_staff_update(
         entries.append(
             _add_update(db, request, actor=actor, kind=kind, visibility=visibility, body=body)
         )
+        if visibility == Visibility.RESIDENT and new_status is None:
+            _tell_resident(db, request, actor=actor, status_label=None)
     request.updated_at = utc_now()
     return entries
 
@@ -209,7 +233,22 @@ def _change_status(
         before={"status": before},
         after={"status": new_status},
     )
+    _tell_resident(db, request, actor=actor, status_label=STATUS_WORDS[new_status])
     return entry
+
+
+def _tell_resident(
+    db: Session, request: MaintenanceRequest, *, actor: User, status_label: str | None
+) -> None:
+    notifications.request_changed_for_resident(
+        db,
+        organization_id=request.organization_id,
+        request_id=request.id,
+        reference=reference_for(request.number),
+        resident_id=request.resident_id,
+        actor=actor,
+        status_label=status_label,
+    )
 
 
 def change_status_for_work_order(
@@ -238,6 +277,7 @@ def add_staff_message(
         visibility=Visibility.RESIDENT,
         body=body,
     )
+    _tell_resident(db, request, actor=actor, status_label=None)
     request.updated_at = utc_now()
     return entry
 
@@ -359,6 +399,14 @@ def post_resident_message(
         kind=UpdateKind.MESSAGE,
         visibility=Visibility.RESIDENT,
         body=body,
+    )
+    notifications.request_message_from_resident(
+        db,
+        organization_id=request.organization_id,
+        property_id=request.property_id,
+        request_id=request.id,
+        reference=reference_for(request.number),
+        actor=actor,
     )
     request.updated_at = utc_now()
     return entry

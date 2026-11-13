@@ -1,4 +1,5 @@
 from app.models.activity import ActivityEvent, ActivityEventImmutableError, EventType
+from app.models.auth_attempt import AuthAttempt
 from app.models.directory import (
     Building,
     Property,
@@ -11,6 +12,7 @@ from app.models.directory import (
 from app.models.estimates import Estimate, EstimateStatus
 from app.models.invitation import Invitation
 from app.models.membership import Membership, MembershipRole, Role
+from app.models.notifications import LinkKind, Notification, NotificationKind
 from app.models.organization import Organization
 from app.models.password_reset import PasswordResetToken
 from app.models.requests import (
@@ -65,15 +67,19 @@ __all__ = [
     "CANCELLABLE_STATUSES",
     "FINISHED_STATUSES",
     "ActivityEvent",
+    "AuthAttempt",
     "ActivityEventImmutableError",
     "Building",
     "Estimate",
     "EstimateStatus",
     "EventType",
     "Invitation",
+    "LinkKind",
     "MaintenanceRequest",
     "Membership",
     "MembershipRole",
+    "Notification",
+    "NotificationKind",
     "Organization",
     "PasswordResetToken",
     "Property",

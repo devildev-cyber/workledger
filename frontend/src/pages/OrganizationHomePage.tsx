@@ -15,6 +15,7 @@ import {
   requestsPath,
   roleLabel,
 } from '../organizations/organizations.ts'
+import { AttentionSummary } from './AttentionSummary.tsx'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function OrganizationHomePage() {
@@ -64,7 +65,9 @@ export function OrganizationHomePage() {
           </Link>
         </p>
       )}
-      <p className="text-slate-600">Work orders will appear here as they are built.</p>
+      {canSeeDirectory(membership.roles) && (
+        <AttentionSummary organizationId={membership.organization_id} />
+      )}
     </section>
   )
 }

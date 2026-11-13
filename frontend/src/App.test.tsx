@@ -97,7 +97,7 @@ describe('an existing session', () => {
   })
 
   it('returns to the sign-in form when the server ends it', async () => {
-    const { fake } = mockApi({
+    const { requests } = mockApi({
       'GET /api/auth/me': { body: sessionFor([harborAdmin, elmManager]) },
       'POST /api/auth/sign-out': notSignedIn,
     })
@@ -107,7 +107,7 @@ describe('an existing session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
 
     expect(await screen.findByLabelText('Email')).toBeInTheDocument()
-    expect(fake).toHaveBeenCalledTimes(2)
+    expect(requests).toHaveLength(2)
   })
 })
 

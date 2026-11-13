@@ -49,6 +49,7 @@ class EventType(enum.StrEnum):
     WORK_ORDER_SENT_BACK = "work_order.sent_back"
     ESTIMATE_SUBMITTED = "estimate.submitted"
     ESTIMATE_DECIDED = "estimate.decided"
+    REPORT_EXPORTED = "report.exported"
 
 
 class ActivityEventImmutableError(Exception):

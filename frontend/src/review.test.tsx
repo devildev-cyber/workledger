@@ -25,6 +25,8 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     building_name: null,
     due_date: null,
     overdue: false,
+    blocked: false,
+    blocked_reason: null,
     request_count: 0,
     assignee_id: 'c-1',
     assignee_name: 'Casey Carpenter',
@@ -44,6 +46,7 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
         status: 'ready_for_review',
         details: null,
         author_name: 'Casey Carpenter',
+        author_role: null,
         created_at: '2026-11-11T10:00:00Z',
       },
     ],
@@ -281,6 +284,7 @@ describe('reviewing finished work', () => {
       status: null,
       details,
       author_name: 'Mo Manager',
+      author_role: null,
       created_at: '2026-11-12T09:00:00Z',
     })
     open({

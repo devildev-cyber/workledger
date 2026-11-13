@@ -36,7 +36,7 @@ from app.schemas.requests import (
     WorkOrderLinkOut,
 )
 from app.schemas.work_orders import ConvertIn, DeclineIn, DuplicateIn, WorkOrderOut
-from app.services import attachments, directory, requests, residents, work_orders
+from app.services import attachments, attribution, directory, requests, residents, work_orders
 from app.services.attachments import AttachmentError, AttachmentLimitError
 from app.services.requests import RequestError, RequestRow
 
@@ -140,6 +140,12 @@ def _staff_detail(db: DbSession, row: RequestRow) -> StaffRequestOut:
         if row.request.duplicate_of_id
         else None
     )
+    staff_timeline = requests.timeline(db, row.request.id, include_internal=True)
+    author_roles = attribution.display_roles(
+        db,
+        organization_id=row.request.organization_id,
+        user_ids=[entry.author_user_id for entry, _author in staff_timeline],
+    )
     return StaffRequestOut(
         **_staff_summary(row, _work_order_links(db, [row])).model_dump(),
         duplicate_of=RequestLinkOut(
@@ -167,8 +173,11 @@ def _staff_detail(db: DbSession, row: RequestRow) -> StaffRequestOut:
                 status=entry.status_after,
                 created_at=entry.created_at,
                 author_name=author.full_name if author else None,
+                author_role=author_roles.get(entry.author_user_id)
+                if entry.author_user_id
+                else None,
             )
-            for entry, author in requests.timeline(db, row.request.id, include_internal=True)
+            for entry, author in staff_timeline
         ],
         attachments=[
             StaffAttachmentOut.model_validate(item, from_attributes=True)

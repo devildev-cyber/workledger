@@ -1,4 +1,6 @@
+import logging
 import secrets
+from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -8,13 +10,35 @@ from app.core.mail import EmailSender
 from app.core.storage import FileStore
 from app.db.session import get_session
 from app.models import UserSession
+from app.services import notifications
 from app.services.sessions import get_valid_session
+
+logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "workledger_session"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 DbSession = Annotated[Session, Depends(get_session)]
+
+
+def deliver_notifications(request: Request, db: DbSession) -> Iterator[None]:
+    """After a change has been committed, send the email copies of the notifications it made.
+
+    Nothing is sent for a request that failed, because the exception skips this step and the
+    changes were never committed. A problem sending never turns a saved change into an error.
+    """
+    yield
+    if request.method in SAFE_METHODS:
+        return
+    try:
+        notifications.deliver(
+            db,
+            request.app.state.email_sender,
+            frontend_url=request.app.state.settings.frontend_url,
+        )
+    except Exception:
+        logger.exception("Could not deliver notification emails")
 
 
 def get_email_sender(request: Request) -> EmailSender:

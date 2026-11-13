@@ -6,7 +6,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -14,6 +14,9 @@ from app.core.mail import MemoryEmailSender
 from app.db.session import create_db_engine, get_session
 
 TEST_SECRET_KEY = "test-secret-key-that-is-long-enough-for-validation"
+# Set this to run the whole suite against PostgreSQL instead of a throwaway SQLite file. The
+# database must be empty and disposable: every test starts by wiping its public schema.
+POSTGRES_TEST_URL = os.environ.get("WORKLEDGER_TEST_DATABASE_URL")
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 # Set before test modules are imported, because importing app.main builds the app.
@@ -32,14 +35,26 @@ def fresh_settings() -> Iterator[None]:
 @pytest.fixture
 def alembic_config(tmp_path: Path) -> Config:
     config = Config(BACKEND_DIR / "alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{tmp_path / 'test.db'}")
+    url = POSTGRES_TEST_URL or f"sqlite:///{tmp_path / 'test.db'}"
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return config
+
+
+def _wipe_postgres(url: str) -> None:
+    engine = create_db_engine(url)
+    with engine.begin() as connection:
+        connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        connection.execute(text("CREATE SCHEMA public"))
+    engine.dispose()
 
 
 @pytest.fixture
 def migrated_engine(alembic_config: Config) -> Iterator[Engine]:
+    url = alembic_config.get_main_option("sqlalchemy.url").replace("%%", "%")
+    if POSTGRES_TEST_URL:
+        _wipe_postgres(url)
     command.upgrade(alembic_config, "head")
-    engine = create_db_engine(alembic_config.get_main_option("sqlalchemy.url"))
+    engine = create_db_engine(url)
     yield engine
     engine.dispose()
 

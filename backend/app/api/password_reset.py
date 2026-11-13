@@ -3,8 +3,10 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from app.api.deps import DbSession, EmailSenderDep
 from app.core.config import Settings
 from app.core.mail import EmailMessage
+from app.core.network import client_address
 from app.models import User
 from app.schemas.auth import MessageOut, PasswordResetConfirm, PasswordResetRequest
+from app.services import throttle
 from app.services.password_reset import (
     InvalidResetTokenError,
     create_reset_token,
@@ -61,6 +63,17 @@ def request_password_reset(
     The email is sent after the response, so the response time does not reveal it either.
     """
     settings: Settings = request.app.state.settings
+
+    # Every request is counted, whether or not the account exists. Past the limit the answer
+    # is unchanged, but no email is sent, so nobody can be flooded and nothing is revealed.
+    caller = throttle.caller_for(
+        settings, email=body.email, address=client_address(request, settings)
+    )
+    limited = throttle.reset_wait(db, settings, caller) > 0
+    throttle.record(db, caller, kind=throttle.RESET)
+    db.commit()
+    if limited:
+        return MessageOut(detail=REQUEST_ACCEPTED)
 
     user = get_user_by_email(db, body.email)
     if user is not None and user.is_active:

@@ -1,6 +1,7 @@
 import type { WorkOrderEntry } from '../api/types.ts'
 import { formatDate, formatDay } from '../format.ts'
 import { formatMoney } from '../money.ts'
+import { authorLabel } from '../organizations/organizations.ts'
 import { CATEGORY_LABELS, URGENCY_SHORT } from '../requests/labels.ts'
 import { ENTRY_HEADLINES, FIELD_LABELS, WORK_ORDER_STATUS_LABELS } from './labels.ts'
 
@@ -76,7 +77,7 @@ export function History({ entries }: { entries: WorkOrderEntry[] }) {
             </ul>
           )}
           <p className="text-xs text-slate-500">
-            {entry.author_name ?? 'System'} · {formatDate(entry.created_at)}
+            {authorLabel(entry.author_name, entry.author_role)} · {formatDate(entry.created_at)}
           </p>
         </li>
       ))}

@@ -19,7 +19,7 @@ from app.models import (
     WorkOrder,
     WorkOrderStatus,
 )
-from app.services import estimates, work_orders
+from app.services import estimates, notifications, work_orders
 from app.services.activity import record_event
 from app.services.work_orders import WorkOrderError
 
@@ -97,6 +97,14 @@ def verify(
         subject_id=work_order.id,
         after=details,
     )
+    notifications.work_order_verified(
+        db,
+        organization_id=work_order.organization_id,
+        work_order_id=work_order.id,
+        reference=work_orders.reference_for(work_order.number),
+        contractor_user_id=notifications.assignee_user_id(db, work_order.id),
+        actor=actor,
+    )
 
 
 def send_back(db: Session, work_order: WorkOrder, *, actor: User, reason: str) -> None:
@@ -129,4 +137,12 @@ def send_back(db: Session, work_order: WorkOrder, *, actor: User, reason: str) -
         actor=actor,
         subject_type="work_order",
         subject_id=work_order.id,
+    )
+    notifications.work_order_sent_back(
+        db,
+        organization_id=work_order.organization_id,
+        work_order_id=work_order.id,
+        reference=work_orders.reference_for(work_order.number),
+        contractor_user_id=notifications.assignee_user_id(db, work_order.id),
+        actor=actor,
     )

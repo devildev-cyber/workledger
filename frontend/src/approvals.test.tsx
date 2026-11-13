@@ -59,6 +59,8 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     building_name: null,
     due_date: null,
     overdue: false,
+    blocked: false,
+    blocked_reason: null,
     request_count: 0,
     assignee_id: 'c-1',
     assignee_name: 'Casey Carpenter',

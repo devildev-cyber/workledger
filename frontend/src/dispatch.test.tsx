@@ -57,6 +57,8 @@ function workOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
     building_name: null,
     due_date: '2026-12-01',
     overdue: false,
+    blocked: false,
+    blocked_reason: null,
     request_count: 0,
     assignee_id: null,
     assignee_name: null,
@@ -499,6 +501,7 @@ describe('assigning a work order', () => {
       status: null,
       details: null,
       author_name: 'Casey Carpenter',
+      author_role: null,
       created_at: '2026-11-10T10:00:00Z',
     })
     mockApi({

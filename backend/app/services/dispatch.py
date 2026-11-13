@@ -26,7 +26,7 @@ from app.models import (
     WorkOrderEntry,
     WorkOrderStatus,
 )
-from app.services import work_orders
+from app.services import notifications, work_orders
 from app.services.activity import record_event
 from app.services.work_orders import WorkOrderError, WorkOrderRow
 
@@ -199,6 +199,25 @@ def assign(
     db.flush()
 
     name = contractor.user.full_name
+    reference = work_orders.reference_for(work_order.number)
+    if current is not None:
+        notifications.work_order_unassigned(
+            db,
+            organization_id=work_order.organization_id,
+            work_order_id=work_order.id,
+            reference=reference,
+            contractor_membership_id=current.contractor_membership_id,
+            actor=actor,
+        )
+    notifications.work_order_assigned(
+        db,
+        organization_id=work_order.organization_id,
+        work_order_id=work_order.id,
+        reference=reference,
+        title=work_order.title,
+        contractor_membership_id=contractor.membership.id,
+        actor=actor,
+    )
     work_orders.add_entry(
         db,
         work_order,
@@ -255,6 +274,14 @@ def unassign(db: Session, work_order: WorkOrder, *, actor: User) -> None:
         subject_type="work_order",
         subject_id=work_order.id,
         before={"contractor_membership_id": str(current.contractor_membership_id)},
+    )
+    notifications.work_order_unassigned(
+        db,
+        organization_id=work_order.organization_id,
+        work_order_id=work_order.id,
+        reference=work_orders.reference_for(work_order.number),
+        contractor_membership_id=current.contractor_membership_id,
+        actor=actor,
     )
     _return_to_open(db, work_order, actor=actor)
 
@@ -366,6 +393,16 @@ def decline(db: Session, job: Job, *, actor: User, reason: str) -> None:
 
 
 def _record_response(db: Session, job: Job, *, actor: User, response: AssignmentResponse) -> None:
+    work_order = job.row.work_order
+    notifications.assignment_responded(
+        db,
+        organization_id=work_order.organization_id,
+        property_id=work_order.property_id,
+        work_order_id=work_order.id,
+        reference=work_orders.reference_for(work_order.number),
+        accepted=response == AssignmentResponse.ACCEPTED,
+        actor=actor,
+    )
     record_event(
         db,
         event_type=EventType.WORK_ORDER_ASSIGNMENT_RESPONDED,

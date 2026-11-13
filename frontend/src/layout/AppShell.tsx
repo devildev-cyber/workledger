@@ -17,6 +17,8 @@ import {
   requestsPath,
   workOrdersPath,
 } from '../organizations/organizations.ts'
+import { helpPath, reportsPath } from '../reports/reports.ts'
+import { NotificationsLink } from '../notifications/NotificationsLink.tsx'
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher.tsx'
 
 export function AppShell() {
@@ -37,18 +39,25 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-white px-6 py-3">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded focus:bg-white focus:px-3 focus:py-2"
+      >
+        Skip to main content
+      </a>
+      <header className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <Link to="/" className="text-lg font-semibold">
           WorkLedger
         </Link>
         <OrganizationSwitcher />
         {membership && (
-          <nav aria-label="Main" className="flex gap-4">
+          <nav aria-label="Main" className="flex flex-wrap gap-x-4 gap-y-2">
             {canSeeDirectory(membership.roles) && (
               <>
                 <Link to={requestsPath(membership.organization_id)}>Requests</Link>
                 <Link to={workOrdersPath(membership.organization_id)}>Work orders</Link>
                 <Link to={propertiesPath(membership.organization_id)}>Properties</Link>
+                <Link to={reportsPath(membership.organization_id)}>Reports</Link>
                 <Link to={`${organizationPath(membership.organization_id)}/residents`}>
                   Residents
                 </Link>
@@ -69,6 +78,8 @@ export function AppShell() {
             {canInvite(membership.roles) && (
               <Link to={`${organizationPath(membership.organization_id)}/people`}>People</Link>
             )}
+            <NotificationsLink organizationId={membership.organization_id} />
+            <Link to={helpPath(membership.organization_id)}>Help</Link>
           </nav>
         )}
         <div className="ml-auto flex items-center gap-3 text-sm">
@@ -89,7 +100,7 @@ export function AppShell() {
         </p>
       )}
 
-      <main className="mx-auto max-w-5xl p-6">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl p-4 sm:p-6">
         <Outlet />
       </main>
     </div>

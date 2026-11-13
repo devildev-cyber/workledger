@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import SESSION_COOKIE_NAME, AuthenticatedSession, DbSession
 from app.core.config import Settings
+from app.core.network import client_address
 from app.models import UserSession
 from app.schemas.auth import CurrentUserOut, MembershipOut, SessionOut, SignInRequest
+from app.services import throttle
 from app.services.auth import authenticate
 from app.services.organizations import list_memberships_for_user
 from app.services.sessions import create_session, end_session
@@ -57,10 +59,26 @@ def session_out(db: Session, record: UserSession) -> SessionOut:
 def sign_in(body: SignInRequest, request: Request, response: Response, db: DbSession) -> SessionOut:
     settings: Settings = request.app.state.settings
 
+    caller = throttle.caller_for(
+        settings, email=body.email, address=client_address(request, settings)
+    )
+    wait = throttle.sign_in_wait(db, settings, caller)
+    if wait:
+        # Nothing is checked while locked, not even a correct password, so guessing gains
+        # nothing by continuing. Attempts made during the lock do not extend it.
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many failed sign-in attempts. Try again in a few minutes.",
+            headers={"Retry-After": str(wait)},
+        )
+
     user = authenticate(db, email=body.email, password=body.password)
     if user is None:
+        throttle.record(db, caller, kind=throttle.SIGN_IN)
+        db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
 
+    throttle.forget_sign_in_failures(db, caller)
     record, token = create_session(db, user, max_age=settings.session_max_age)
     db.commit()
 

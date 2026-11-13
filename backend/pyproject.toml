@@ -11,6 +11,7 @@ dependencies = [
   "alembic>=1.13",
   "argon2-cffi>=23.1",
   "fastapi>=0.115",
+  "psycopg[binary]>=3.2",
   "pydantic-settings>=2.4",
   "sqlalchemy>=2.0",
   "uvicorn[standard]>=0.30",
@@ -43,6 +44,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 "tests/test_dispatch.py" = ["F811"]
 "tests/test_verification.py" = ["F811"]
 "tests/test_estimates.py" = ["F811"]
+"tests/test_notifications.py" = ["F811"]
 
 [tool.ruff.lint.isort]
 # The local alembic/ migrations folder would otherwise be mistaken for first-party code.

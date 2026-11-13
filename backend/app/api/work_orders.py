@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -24,6 +24,7 @@ from app.schemas.work_orders import (
 )
 from app.services import (
     attachments,
+    attribution,
     directory,
     dispatch,
     estimates,
@@ -72,6 +73,8 @@ def _summary(
         building_name=row.building.name if row.building else None,
         due_date=work_order.due_date,
         overdue=work_orders.is_overdue(work_order, residents.today()),
+        blocked=work_orders.blocked_reason(work_order) is not None,
+        blocked_reason=work_orders.blocked_reason(work_order),
         request_count=request_count,
         assignee_id=assignee.assignment.contractor_membership_id if assignee else None,
         assignee_name=assignee.name if assignee else None,
@@ -105,6 +108,12 @@ def build_work_order(
         if row.work_order.verified_by_user_id
         else None
     )
+    entries = work_orders.history(db, work_order_id)
+    author_roles = attribution.display_roles(
+        db,
+        organization_id=context.organization.id,
+        user_ids=[entry.author_user_id for entry, _author in entries],
+    )
     hold = work_orders.approval_hold(db, row.work_order)
     allowed = work_orders.allowed_next_statuses(
         current, is_administrator=_is_administrator(context)
@@ -132,9 +141,12 @@ def build_work_order(
                 status=entry.status_after,
                 details=entry.details,
                 author_name=author.full_name if author else None,
+                author_role=author_roles.get(entry.author_user_id)
+                if entry.author_user_id
+                else None,
                 created_at=entry.created_at,
             )
-            for entry, author in work_orders.history(db, work_order_id)
+            for entry, author in entries
         ],
         assignment=next(
             (assignment_out(item) for item in history if item.assignment.ended_at is None), None
@@ -232,6 +244,7 @@ def list_work_orders(
     older_than_days: Annotated[int | None, Query(ge=0, le=3650)] = None,
     assignee_id: uuid.UUID | None = None,
     unassigned: bool = False,
+    attention: Literal["overdue", "blocked"] | None = None,
 ) -> list[WorkOrderSummaryOut]:
     rows = work_orders.list_for_staff(
         db,
@@ -247,6 +260,7 @@ def list_work_orders(
         older_than_days=older_than_days,
         assignee_id=assignee_id,
         unassigned=unassigned,
+        attention=attention,
     )
     ids = [row.work_order.id for row in rows]
     counts = work_orders.request_counts(db, ids)
